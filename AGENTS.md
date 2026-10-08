@@ -1,3 +1,5 @@
+> **Git local — Bruno, 08/10/2026:** durante a produção, branches, commits, merges e tags ficam locais. Não executar push, pull ou fetch nem exigir acesso ao GitHub. O envio completo será feito pelo Bruno somente no final, quando tudo estiver pronto. As verificações de commits e dependências são locais.
+
 # AGENTS.md — protótipo bancário do Bootcamp QI Tech 2026
 
 Vale para qualquer agente que mexa neste repositório: Codex, Claude Code ou outro. O Claude Code lê este arquivo pelo `CLAUDE.md`, que só o importa.
@@ -23,6 +25,14 @@ Vale para qualquer agente que mexa neste repositório: Codex, Claude Code ou out
 - Crie e edite arquivos só com a ferramenta de edição do agente, em UTF-8 sem BOM. Nunca por redirecionamento do terminal (`>`, `>>`, `Set-Content`, `Out-File`): no Windows, ele pode gravar outra codificação.
 - Nunca rode comando que não termina sozinho (`docker compose up` sem `-d`, `docker compose logs -f`). Nunca instale nada fora do `.venv`.
 - Faltou informação ou apareceu uma escolha: PARE (seção 8). Não escolha.
+
+### Execução econômica
+
+- Além das leituras obrigatórias do ambiente, leia o passo atual inteiro e apenas os trechos do índice e das dependências necessários para executá-lo. Não releia todas as fases nem a auditoria a cada passo.
+- Consulte arquivos existentes pelos imports, funções e testes afetados. Reutilize o contexto já lido no mesmo chat; as referências a nomes anteriores não exigem reler os roteiros inteiros.
+- Execute todas as verificações prescritas, inclusive repetições de concorrência. Depois de aprovadas, só repita se houve alteração, falha ou exigência expressa do passo.
+- Não refaça a auditoria nem replaneje trechos completos. Para contas numéricas, consulte ARR em `docs/decisoes.md` somente quando necessário; os códigos originais continuam válidos.
+- Limite saídas ao resultado necessário para verificar o passo e siga o formato de conclusão ou parada deste arquivo.
 
 ## 3. Comandos
 
@@ -157,13 +167,15 @@ Passo cujo campo **Testes** diz "prova": o teste confere o que já existe. Escre
 - **PRD-10 e DIA-01 — testes que mexem no que é de todos.** Teste que erra token de propósito, ou que depende do relógio do banco, também começa com `DbUtils.rollback()`: a barreira conta erros de token por IP, e o relógio é um só para a suíte inteira.
 - **TST-01 — dois testes por `if`.** Cada `if` do controller tem pelo menos um teste em que passa e um em que é barrado.
 - **TST-02 — o que barra tem teste.** Se o plano diz que barra, existe um teste que fica vermelho quando deixa de barrar.
-- **TST-05 — contas puras com unitário.** Toda função de `src/calculations/` tem teste em `tests/unit/`, escrito antes dela. O unitário importa só de `calculations`, da biblioteca padrão e do `pytest`.
+- **TST-05 — contas puras com unitário.** Toda função de `src/calculations/` tem teste em `tests/unit/`, escrito antes dela. O unitário de cálculo importa só de `calculations`, da biblioteca padrão e do `pytest`. Exceção TST-09: testes isolados em `tests/unit/infrastructure/` podem importar os módulos de infraestrutura sob teste e controlar relógio/conector/repository; não substituem os black box HTTP nem a prova de concorrência no PostgreSQL.
 - **TST-06 — sorteio com gerador injetável.** A função do sorteio recebe o gerador de números como parâmetro; o unitário passa um gerador falso; o black box confere o que vale nos dois resultados.
 - O nome de cada arquivo de teste é único em todo o `tests/`: o pytest importa os arquivos de pastas sem `__init__.py` só pelo nome.
 - Dado de teste é inventado: CPF de `RandomGenerator.generate_cpf()`, e-mail com `uuid4()`. Nunca dado de gente de verdade.
 - Proibido apagar, pular (`pytest.mark.skip`, `skipif`, `xfail`), comentar ou afrouxar teste, trocar valor esperado ou editar teste que já existia para ele passar. Só o plano manda mudar teste antigo, pelo campo **Arquivos**.
 
 ## 7. Git
+
+Todos os roteiros podem entrar juntos antes da implementação, no commit local `docs(plano): roteiros auditados`. Verifique sua presença no histórico completo; não exija commit documental ou cópia antes de cada fase.
 
 **TIM-04, TIM-08 — git automático.** Uma branch por fase, `fase/NN-<nome>` (o valor do campo **Branch**); um commit por passo; merge na `main` só no `Passo N.fim`; sem pull request.
 
@@ -175,7 +187,6 @@ A mensagem de commit e a de merge são as do plano, exatas, numa linha (Conventi
 2. No `Passo N.1`, abra a fase:
    ```
    git switch main
-   git pull --ff-only origin main
    git switch -c fase/NN-<nome>
    ```
    Nos outros passos: `git branch --show-current` → exatamente o valor do campo **Branch**.
@@ -191,7 +202,6 @@ git diff --name-only
 git ls-files --others --exclude-standard
 git commit -m "<mensagem exata do campo Commit>"
 git log -1 --format=%B
-git push origin fase/NN-<nome>
 ```
 
 - O `git rm` só entra no passo que manda apagar arquivo, e é o único jeito de apagar.
@@ -208,15 +218,12 @@ docker compose up -d --build --wait
 ./.venv/Scripts/python.exe -m flake8 src tests
 git status --short
 git switch main
-git pull --ff-only origin main
 git merge --no-ff --no-edit -m "<mensagem exata do plano>" fase/NN-<nome>
 git tag fase-NN
-git push origin main
-git push origin fase-NN
 ```
 
 - O merge só acontece com a suíte verde, o lint sem saída e o `git status --short` vazio.
-- O `git pull` termina com `Already up to date.`.
+- O `git status --short` antes do merge não mostra alterações.
 
 **Proibido:** `git push --force`, `-f` e `--force-with-lease`; `git commit --amend`; `git rebase`; `git reset`; `git add .`, `git add -A` e `git add --all`; `git commit -a`; `git stash`; `git restore`; `git checkout -- <arquivo>`; `git clean`; `git merge --squash`; apagar branch ou tag; mudar o `git config`; abrir pull request; commit com teste vermelho ou lint com saída; commitar o `.env`.
 
@@ -225,14 +232,14 @@ git push origin fase-NN
 PARE quando:
 
 1. Um teste, o lint ou o **Verificar** não passa depois de 3 tentativas. Tentativa = mudar só arquivos do campo **Arquivos** e rodar de novo o que falhou.
-2. Um arquivo, função, comando ou nome que o plano cita não existe, ou um comando do plano ou deste arquivo falha (inclusive `docker compose`, `git pull` e `git push`).
+2. Um arquivo, função, comando ou nome que o plano cita não existe, ou um comando local do plano ou deste arquivo falha (inclusive `docker compose`).
 3. O passo exige uma escolha que o plano não define: nome, valor, ordem, status, código de erro ou mensagem.
 4. O passo exige mexer em arquivo fora do campo **Arquivos**.
 5. O plano contradiz este arquivo.
 6. Uma conferência do começo do passo (seção 7) falha.
 7. Um teste novo passa antes do código (fora dos passos de prova).
 8. O `git log -1 --format=%B` mostra mais que a mensagem do plano.
-9. No fim da fase, o `git pull` traz commit novo ou o merge dá conflito.
+9. No fim da fase, o merge local dá conflito.
 10. Acontece uma situação do campo **Pare se** do passo.
 
 Ao parar: nada de commit, merge, desfazer ou apagar. Responda só com este relatório:
@@ -259,8 +266,15 @@ Se o erro envolve a API, junte ao ERRO a saída de `docker compose logs --tail 1
 - [ ] Nos arquivos do passo: nenhum `id` interno para fora, nenhum `float` em dinheiro, nenhum segredo, nenhum CPF, CNPJ ou token em log.
 - [ ] Nenhum arquivo, dependência, campo, rota, erro ou teste além do passo.
 - [ ] As conferências do fim do passo (seção 7) deram o esperado; o `.env` ficou fora.
-- [ ] Commit com a mensagem exata e push feitos.
+- [ ] Commit local com a mensagem exata feito.
 
 No `Passo N.fim`, o fechamento é o da seção 7, com o merge no lugar do commit.
 
 Passo concluído: responda `PASSO N.M CONCLUÍDO` e a saída de `git log -1 --oneline`.
+
+
+## Auditoria do plano — 08/10/2026
+
+O plano fonte está em `Plano no chat/plano/`, na pasta mãe de `score`. As fases detalhadas disponíveis e auditadas são 2, 3, 4, 5, 6, 8, 7, 9 e 11, nessa ordem. As nove regras fechadas foram aplicadas aos trechos e testes dos roteiros na segunda auditoria de 08/10, registrada no relatório histórico da pasta fonte Plano no chat/plano, fora do score. Copiar todos os roteiros auditados para score/docs/plano no início e registrar o único commit documental previsto; não exigir cópia por fase nem relatório de auditoria no score. Não presumir que o plano foi implementado: `score` ainda contém o sample do base. Correção desta documentação foi autorizada expressamente pelo Bruno para esta auditoria.
+
+Regra sobre commits e camadas: os passos detalhados de dinheiro tratam `IntegrityError` com rollback e repetição; bloqueio automático faz commit antes de lançar sua recusa, conforme CLI-08. Essas exceções expressas prevalecem sobre a frase geral “commit é a última linha antes do return”. Testes de prova da fase 11 podem começar verdes quando verificam comportamento existente; não exigir um erro de importação artificial. CPF, CNPJ e tokens também não podem aparecer nos parâmetros de exceções SQL (`hide_parameters=True`, fase 4.4).

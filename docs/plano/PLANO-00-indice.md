@@ -1,3 +1,7 @@
+> **Git local — Bruno, 08/10/2026:** durante a produção, branches, commits, merges e tags ficam locais. Não executar push, pull ou fetch nem exigir acesso ao GitHub. O envio completo será feito pelo Bruno somente no final, quando tudo estiver pronto. As verificações de commits e dependências são locais.
+
+> **Auditoria de 08/10/2026:** estes arquivos são um plano, não código implementado. As nove fases estão detalhadas e auditadas. O relatório histórico fica em Plano no chat/plano/AUDITORIA-2026-10-08.md, fora do score; não é dependência da execução.
+
 # PLANO-00 — índice
 
 Índice do plano do protótipo bancário do Bootcamp QI Tech 2026. Os nomes deste arquivo são obrigatórios em todas as fases: tabelas, models, rotas, schemas, erros, classes, funções, arquivos, variáveis de ambiente e cabeçalhos. Os passos completos ficam em `docs/plano/PLANO-fase-NN.md`; as regras de execução, no `AGENTS.md`.
@@ -8,13 +12,13 @@
 - Cada arquivo de um passo vem com o que o passo faz com ele: criar, editar ou apagar. Apagar é sempre com `git rm`.
 - Passo de camada de baixo (repository, DTO, controller) não tem teste novo; o teste vem no passo da rota, que fica vermelho antes do código.
 - Os passos da fase 11 são de prova: o teste confere o que já existe.
-- A fase 0 e a seção "(c) Feito à mão" são do Bruno, não do agente.
+- A fase 0 pode ser conferida pelo Codex quando Bruno solicitar; o envio final ao GitHub permanece com Bruno. A seção "(c) Feito à mão" descreve conferências, não autoriza publicar durante a produção.
 
 ## Ordem das fases
 
 | Ordem | Fase | Branch | Depende de |
 |---|---|---|---|
-| 1 | 0 — preparação [HUMANO] | `main` | — |
+| 1 | 0 — preparação local | `main` | — |
 | 2 | 2 — banco | `fase/02-banco` | 0 |
 | 3 | 3 — contrato | `fase/03-contrato` | 2 |
 | 4 | 4 — esqueleto | `fase/04-esqueleto` | 3 |
@@ -32,7 +36,7 @@ Duas diferenças em relação ao plano de trabalho:
 - **A fase 8 roda antes da 7.** Guardar no cofrinho e virar o dia dão XP de recorde (GAM-04, GAM-19, GAM-25), e quem soma XP e sobe nível é a fase 8 (`GamificationController.award_record_xp`).
 - **Lotes e a categoria "economias" entram na fase 7.** O rendimento é contado por lote (DIA-03, COF-13, COF-15, COF-23): o primeiro guardar já cria lote, e o primeiro resgate já tira do lote mais antigo. A fase 9 fica com as categorias criadas pelo dono, o IR e o IOF e a chance de não debitar.
 
-Se o tempo apertar, a fase 11 fica só com os passos 11.1 e 11.2 (TST-08 — provas extras).
+A fase 11 exige os passos 11.1 a 11.6: inclui as provas PostgreSQL reproduzíveis da TST-09, além das rodadas HTTP.
 
 ## Registro de nomes
 
@@ -245,75 +249,46 @@ Em `src/calculations/`, exportadas por `src/calculations/__init__.py`. Só bibli
 | Imagem do Mockserver | `mockserver/Dockerfile` | serviço `mockserver` no compose (7.10) |
 | Tabela de rotas | `docs/rotas.md` | 3.1 |
 
-## Fase 0 — preparação [HUMANO]
+## Fase 0 — conferir a preparação existente
 
-**Branch:** `main` · **Depende de:** nada
-**Objetivo:** o repositório `score` com o base, o `AGENTS.md`, o `CLAUDE.md`, o plano e o espelho das decisões, publicado na `main`.
+**Branch:** main · **Depende de:** nada
+**Objetivo:** score existente com base e documentação conferidos, versionados localmente. O envio ao GitHub é somente no final.
 
-Tudo no PowerShell. Antes do primeiro comando, troque os três caminhos pelos da sua máquina.
+O repositório já existe e contém os commits locais do base. **Não repetir a cópia do base, recriar o Git, apagar arquivos ou recriar esses commits.** Esta preparação documental pode ser feita pelo Codex quando Bruno a solicitar; as restrições de edição dos planos continuam valendo durante a implementação.
 
-```powershell
-$repo = "C:\Users\bruno\Desktop\Life\QI Tech\bootcamp QITech\score"
-$base = "C:\Users\bruno\Desktop\Life\QI Tech\bootcamp QITech\bootcamp-base-api"
-$decisoes = "C:\Users\bruno\Desktop\Life\QI Tech\bootcamp QITech\_contexto"
+**0.1 — Conferir o estado local**
+
+Da raiz do score, um comando por vez:
 ```
-
-**0.1 — Conferir o repositório (TIM-04 — repositório novo e privado)**
-
-```powershell
-Set-Location $repo
-git remote -v
-git status
-```
-
-- `git remote -v` mostra `origin` apontando para `https://github.com/brunoguimaraes886/score` (fetch e push).
-- `git status` não mostra arquivo modificado.
-- Abra `https://github.com/brunoguimaraes886/score` numa janela anônima: tem de dar 404 (privado).
-
-**0.2 — Copiar o base sem `.git` (ARQ-11 — pode mudar o base)**
-
-```powershell
-robocopy $base $repo /E /XD .venv .pytest_cache __pycache__ .git /XF .env
-Get-ChildItem $repo -Force -Name
-```
-
-- O `robocopy` termina com código 1 (arquivos copiados); de 0 a 7 não é erro.
-- A lista mostra `.env.example`, `.flake8`, `.gitignore`, `database`, `docker-compose.yml`, `Dockerfile`, `docs`, `LICENSE`, `README.md`, `requirements-dev.txt`, `requirements.txt`, `src`, `tests` e `.git`; não mostra `.venv` nem `.env`.
-
-**0.3 — Colocar `AGENTS.md`, `CLAUDE.md`, plano e decisões (TIM-07 — espelho das decisões)**
-
-1. Salve o `AGENTS.md` deste chat em `$repo`.
-2. Rode:
-
-```powershell
-[System.IO.File]::WriteAllText("$repo\CLAUDE.md", "@AGENTS.md`n")
-New-Item -ItemType Directory -Force -Path "$repo\docs\plano"
-Copy-Item -LiteralPath $decisoes -Destination "$repo\docs\decisoes.md"
-```
-
-3. Salve o `PLANO-00-indice.md` em `$repo\docs\plano\`.
-
-**0.4 — Primeiro commit e push na `main` (TIM-04)**
-
-```powershell
-git add -A
+git branch --show-current
 git status --short
-git commit -m "chore: base do bootcamp, AGENTS.md e plano"
-git branch -M main
-git push -u origin main
+git remote -v
+git log --oneline
 ```
+- Branch esperada: main. Origin é configuração local; não chamar GitHub, pull, fetch ou push.
+- Preservar e revisar as alterações documentais da auditoria; o status só precisa estar limpo ao terminar a preparação.
+- O histórico deve conter chore: base-api e chore: base do bootcamp, AGENTS.md e plano. Não criá-los de novo se já existem.
 
-- Antes do commit, a lista do `git status --short` não tem `.env` (só `.env.example`) nem `.venv`.
-- Se o push for recusado porque o GitHub já tem um commit: `git pull origin main --allow-unrelated-histories --no-edit` e, depois, `git push -u origin main`.
+**0.2 — Conferir o base já presente**
 
-**0.5 — Só se for usar o Claude Code: commit sem assinatura**
+Conferir src, database, tests, compose, Dockerfiles e requirements existentes. Nenhuma implementação bancária nesta preparação. Não executar robocopy sobre o score.
 
-```powershell
-New-Item -ItemType Directory -Force -Path "$repo\.claude"
-[System.IO.File]::WriteAllText("$repo\.claude\settings.local.json", '{"attribution": {"commit": "", "pr": ""}}')
-```
+**0.3 — Sincronizar a documentação auditada**
 
-A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git.
+- Comparar AGENTS.md e índice do score com os arquivos de Plano no chat/plano; aplicar somente diferenças necessárias.
+- O CLAUDE.md do score contém @AGENTS.md.
+- score/docs/decisoes.md espelha o **arquivo** _contexto/04 - Decisões.md, nunca a pasta _contexto inteira.
+- Manter UTF-8 sem BOM. Usar a ferramenta de edição do agente; não gravar arquivos por redirecionamento do terminal.
+
+**0.4 — Registrar as alterações documentais localmente**
+
+Revisar o diff, adicionar somente os arquivos documentais alterados explicitamente e fazer um commit local de documentação. Nunca git add -A nem git add .; nenhum .env ou cache no commit. Se não houver alteração, não criar commit vazio. Git limpo ao concluir.
+
+**0.5 — Copiar todos os roteiros uma vez no começo**
+
+Bruno pode copiar manualmente somente os arquivos PLANO-*.md de Plano no chat/plano para score/docs/plano. O AGENTS.md permanece na raiz do score, sincronizado na preparação. O relatório de auditoria permanece fora do score, apenas na pasta fonte. O Codex confere as cópias e registra todos os planos em um único commit local na main: docs(plano): roteiros auditados. As fases verificam esse commit no histórico completo e o marco da fase anterior; não exigem cópia ou commit documental por fase. Se já existem as cópias idênticas e o commit, apenas conferir. Nenhum push.
+
+O restante do desenvolvimento segue AGENTS.md e cada roteiro. Docker, venv, suíte e lint são validados nos passos previstos, começando por 2.1.
 
 ## Fase 2 — banco
 
@@ -333,17 +308,17 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **2.3 — Apagar as rotas do sample_entity**
 - Entrega: `src/app.py` só com `/` e `/health_check`; `src/resources/__init__.py` só com `HealthCheckResource`.
 - Decisões: ARQ-11 — pode apagar o `sample_entity`.
-- Arquivos: `src/app.py` (editar) · `src/resources/sample_entity.py` (apagar) · `src/resources/__init__.py` (editar)
+- Arquivos: `src/resources/sample_entity.py` (apagar) · `src/resources/__init__.py` (editar) · `src/app.py` (editar)
 
 **2.4 — Apagar controller e repository do sample_entity**
 - Entrega: `src/controllers/__init__.py` e `src/repositories/__init__.py` vazios; `BaseController` intacto.
 - Decisões: ARQ-11 — pode apagar o `sample_entity`.
-- Arquivos: `src/controllers/sample_entity_controller.py` (apagar) · `src/controllers/__init__.py` (editar) · `src/repositories/sample_entity_repository.py` (apagar) · `src/repositories/__init__.py` (editar)
+- Arquivos: `src/controllers/sample_entity_controller.py` (apagar) · `src/repositories/sample_entity_repository.py` (apagar) · `src/controllers/__init__.py` (editar) · `src/repositories/__init__.py` (editar)
 
 **2.5 — Apagar DTO e schemas do sample_entity**
 - Entrega: `src/dtos/__init__.py` vazio; nenhum schema em `src/schemas/`.
 - Decisões: ARQ-11 — pode apagar o `sample_entity`.
-- Arquivos: `src/dtos/sample_entity_dto.py` (apagar) · `src/dtos/__init__.py` (editar) · `src/schemas/post_sample_entity.json` (apagar) · `src/schemas/put_sample_entity.json` (apagar) · `src/schemas/get_sample_entities.json` (apagar)
+- Arquivos: `src/dtos/sample_entity_dto.py` (apagar) · `src/schemas/post_sample_entity.json` (apagar) · `src/schemas/put_sample_entity.json` (apagar) · `src/schemas/get_sample_entities.json` (apagar) · `src/dtos/__init__.py` (editar)
 
 **2.6 — Apagar os models do sample_entity**
 - Entrega: `src/models/` só com `base.py` e o `__init__.py` vazio.
@@ -467,7 +442,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **4.8 — Funções de teste: corpos e objetos**
 - Entrega: `PayloadGenerator` (`customer`, `deposit`, `withdrawal`, `transfer`, `saving`, `redemption`, `category`, `point_application`, `day_closing`, `block`); `ObjectGenerator` (`create_customer`, `create_account`, `create_funded_account`).
 - Decisões: TST-01 — black box; R6 — sem float.
-- Arquivos: `tests/utils/payload_generator.py` (editar) · `tests/utils/object_generator.py` (editar) · `tests/utils/__init__.py` (editar)
+- Arquivos: `tests/utils/payload_generator.py` (editar) · `tests/utils/object_generator.py` (editar) · `tests/utils/__init__.py` (editar) · `src/utils/schema_handler.py` (editar)
 
 **4.fim — Fechar a fase** (AGENTS.md, seção 7).
 
@@ -499,7 +474,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **5.5 — Conta: DTO, controller e checagem de dono**
 - Entrega: `AccountDTO`; `AccountController.open_account` e `get_account`; `BaseController.get_owned_account`: conta de cliente cuja chave e token batem, ou 404 `QIT001010` com `auth_failure = "ACCOUNT"`.
 - Decisões: API-08 — rotas aninhadas; API-09 — dono pelo token; R8 — outro dono → 404; API-16 — token da conta; CLI-04 — uma conta aberta.
-- Arquivos: `src/dtos/account_dto.py` (criar) · `src/dtos/__init__.py` (editar) · `src/controllers/account_controller.py` (criar) · `src/controllers/base_controller.py` (editar) · `src/controllers/__init__.py` (editar)
+- Arquivos: `src/dtos/account_dto.py` (criar) · `src/dtos/__init__.py` (editar) · `src/controllers/base_controller.py` (editar) · `src/controllers/account_controller.py` (criar) · `src/controllers/__init__.py` (editar)
 
 **5.6 — `POST /customers/{customer_key}/accounts`**
 - Entrega: a rota; a resposta traz o token uma vez só.
@@ -546,7 +521,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **6.2 — DTOs do dinheiro e documento mascarado**
 - Entrega: `TransactionDTO`; `EntryDTO` (outra ponta e as duas datas); `is_valid_cnpj`; `mask_document_number`.
 - Decisões: MOV-16 — CPF ou CNPJ de quem deposita; MOV-17 — outra ponta no extrato; MOV-18 — duas datas no extrato; PRD-12 — dado sensível mascarado.
-- Arquivos: `src/dtos/transaction_dto.py` (criar) · `src/dtos/entry_dto.py` (criar) · `src/dtos/__init__.py` (editar) · `src/utils/document_number.py` (editar)
+- Arquivos: `src/utils/document_number.py` (editar) · `src/dtos/transaction_dto.py` (criar) · `src/dtos/entry_dto.py` (criar) · `src/dtos/__init__.py` (editar)
 
 **6.3 — Tarifa (unitário)**
 - Entrega: `calculate_fee(amount_cents, fee_points)`: `ceil(amount_cents × (10 − fee_points) / 1000)` em inteiros.
@@ -581,7 +556,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **6.9 — Limite diário e bloqueio automático**
 - Entrega: `TransactionRepository.count_transfers_sent(account, accounting_date, since)`; a 11ª transferência enviada no dia contábil, contada desde o último desbloqueio, responde 422 `QIT001019` e bloqueia a conta na mesma requisição (`SUSPICIOUS_ACTIVITY`, origem `AUTOMATIC`).
 - Decisões: CLI-08 — bloqueio automático; DAD-13 — a única gravação de pedido barrado.
-- Arquivos: `src/controllers/transaction_controller.py` (editar) · `src/repositories/transaction_repository.py` (editar) · `tests/integration/transactions/test_daily_transfer_limit.py` (criar)
+- Arquivos: `src/constants.py` (editar) · `docker-compose.yml` (editar) · `.env.example` (editar) · `src/repositories/transaction_repository.py` (editar) · `src/repositories/account_repository.py` (editar) · `src/controllers/transaction_controller.py` (editar) · `tests/integration/transactions/test_daily_transfer_limit.py` (criar)
 
 **6.10 — `GET /accounts/{account_key}/transactions/{transaction_key}`**
 - Entrega: `TransactionController.get_transaction` e a rota.
@@ -591,7 +566,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **6.11 — `GET /accounts/{account_key}/entries` (extrato)**
 - Entrega: `EntryRepository.list_page` (`created_at` decrescente, desempate por `id`, pede `limit + 1`); `TransactionController.list_entries` e a rota, no envelope do base.
 - Decisões: MOV-04 — envelope do extrato; MOV-14 — ordem do extrato; MOV-17 — outra ponta; MOV-18 — duas datas; TST-03 — extrato paginado.
-- Arquivos: `src/controllers/transaction_controller.py` (editar) · `src/repositories/entry_repository.py` (editar) · `src/resources/transaction.py` (editar) · `src/app.py` (editar) · `tests/integration/transactions/test_entries.py` (criar)
+- Arquivos: `src/repositories/entry_repository.py` (editar) · `src/controllers/transaction_controller.py` (editar) · `src/resources/transaction.py` (editar) · `src/app.py` (editar) · `tests/integration/transactions/test_entries.py` (criar)
 
 **6.12 — Encerrar só com saldo zero**
 - Entrega: `close_account` recusa saldo diferente de zero com 409 `QIT001012`.
@@ -650,7 +625,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **7.1 — Ranques e lotes (unitário)**
 - Entrega: os nomes de `ranks.py` e de `lots.py` no registro.
 - Decisões: GAM-12 — ranque pelo cofrinho; GAM-13 — mínimos; COF-02 — % do CDI por ranque; COF-24 — resgate proporcional; TST-05 — unitários.
-- Arquivos: `tests/unit/test_ranks.py` (criar) · `src/calculations/ranks.py` (criar) · `tests/unit/test_lots.py` (criar) · `src/calculations/lots.py` (criar) · `src/calculations/__init__.py` (editar)
+- Arquivos: `tests/unit/test_ranks.py` (criar) · `tests/unit/test_lots.py` (criar) · `src/calculations/ranks.py` (criar) · `src/calculations/lots.py` (criar) · `src/calculations/__init__.py` (editar) · `src/dtos/gamification_dto.py` (editar)
 
 **7.2 — Rendimento (unitário)**
 - Entrega: `daily_rate` (taxa diária com 8 casas) e `lot_yield` (centavos inteiros e o resíduo com 8 casas, em `Decimal`).
@@ -665,7 +640,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **7.4 — Guardar e resgatar: controller**
 - Entrega: `PiggyBankController.save` (operação `SAVE`, lote novo, ranque sobe na hora, XP de recorde por `award_record_xp`) e `redeem` (operação `REDEEM`, do lote mais antigo, principal e rendimento na proporção do lote); os dois aceitam só a categoria padrão: outra `category_key` responde 404 `QIT001021` (a escolha entra no 9.6); `TransactionDTO` com bruto e líquido do resgate.
 - Decisões: COF-01 — um cofrinho por conta; COF-06 — lotes; COF-07 — resgate maior que a categoria; COF-08 — bruto e líquido; COF-10 — guardar e resgatar livres; COF-11 — sem limite; COF-23 — colunas do lote; COF-24 — resgate proporcional; MOV-09 — sem tarifa; MOV-12 — idempotência; GAM-04 — XP de recorde; GAM-19 — ranque sobe na hora; CLI-09 — bloqueada não mexe em dinheiro.
-- Arquivos: `src/controllers/piggy_bank_controller.py` (criar) · `src/controllers/__init__.py` (editar) · `src/dtos/transaction_dto.py` (editar)
+- Arquivos: `src/controllers/piggy_bank_controller.py` (criar) · `src/controllers/__init__.py` (editar) · `src/controllers/gamification_controller.py` (editar) · `src/repositories/gamification_repository.py` (editar) · `src/dtos/transaction_dto.py` (editar)
 
 **7.5 — `POST /accounts/{account_key}/savings`**
 - Entrega: `PiggyBankResource` e a rota.
@@ -680,7 +655,7 @@ A pasta `.claude/` está no `.gitignore` do base: o arquivo nunca vai para o Git
 **7.7 — `GET /accounts/{account_key}/piggy_bank_entries`**
 - Entrega: `EntryRepository.list_piggy_bank_page` (filtro opcional por categoria); `list_piggy_bank_entries` e a rota.
 - Decisões: COF-05 — saldo e extrato do cofrinho; MOV-04 — envelope do extrato.
-- Arquivos: `src/controllers/piggy_bank_controller.py` (editar) · `src/repositories/entry_repository.py` (editar) · `src/resources/piggy_bank.py` (editar) · `src/app.py` (editar) · `tests/integration/piggy_bank/test_piggy_bank_entries.py` (criar)
+- Arquivos: `src/repositories/entry_repository.py` (editar) · `src/repositories/category_repository.py` (editar) · `src/dtos/entry_dto.py` (editar) · `src/controllers/piggy_bank_controller.py` (editar) · `src/controllers/transaction_controller.py` (editar) · `src/resources/piggy_bank.py` (editar) · `src/app.py` (editar) · `tests/integration/piggy_bank/test_piggy_bank_entries.py` (criar)
 
 **7.8 — Connector do Banco Central**
 - Entrega: `BcbConnector.get_cdi_rate(accounting_date)`: a taxa do dia em texto, `None` quando o dia não tem taxa, e `CdiUnavailable` (503) em timeout ou erro; `BCB_API_URL` e `BCB_API_TIMEOUT`; o connector de boletos sai.
@@ -697,7 +672,7 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 **7.10 — Mockserver no compose**
 - Entrega: serviço `mockserver` (imagem de `mockserver/Dockerfile`, com o arquivo de dados dentro; porta `${MOCKSERVER_PORT:-1080}`); `BCB_API_URL` e `BCB_API_TIMEOUT` na API; `BANKSLIP_*` saem; `MockGenerator` (`set_cdi_rate`, `set_cdi_delay`, `clear_cdi`) para os testes programarem o Mockserver.
 - Decisões: ARQ-05 — serviço novo no compose; ARQ-06 — três peças; ARQ-08 — ambiente de entrega; ARQ-04 — sobe sem `.env`.
-- Arquivos: `docker-compose.yml` (editar) · `.env.example` (editar) · `mockserver/Dockerfile` (criar) · `tests/utils/mock_generator.py` (criar) · `tests/utils/__init__.py` (editar)
+- Arquivos: `mockserver/Dockerfile` (criar) · `docker-compose.yml` (editar) · `.env.example` (editar) · `tests/utils/mock_generator.py` (criar) · `tests/utils/__init__.py` (editar)
 
 **7.11 — Virada do dia: data, CDI e relógio**
 - Entrega: `DayClosingController.close_day` e `POST /internal/day_closings`: data igual ao relógio → pede a taxa e avança um dia; já fechada → 409; no futuro → 422; inexistente → 422; Banco Central fora → 503 e o dia não avança.
@@ -707,7 +682,7 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 **7.12 — Rendimento na virada**
 - Entrega: `LotRepository.list_open_by_piggy_bank_for_update`; rendimento de cada lote pelo ranque que rende no dia, um lançamento `YIELD` por categoria (banco − e cofrinho +), resíduo guardado no lote; dia sem taxa não rende; conta bloqueada rende.
 - Decisões: COF-02 — % do CDI por ranque; COF-13 — rendimento por lote; COF-15 — fração de centavo; COF-16 — só dias com taxa; COF-22 — rende o dia inteiro; COF-23 — colunas do lote; DIA-03 — ordem da virada; CLI-07 — bloqueada segue na virada; GAM-19 — rende o ranque do início do dia.
-- Arquivos: `src/controllers/day_closing_controller.py` (editar) · `src/repositories/lot_repository.py` (editar) · `tests/integration/internal/test_day_closing_yield.py` (criar)
+- Arquivos: `src/controllers/day_closing_controller.py` (editar) · `src/repositories/lot_repository.py` (editar) · `src/repositories/account_repository.py` (editar) · `tests/integration/internal/test_day_closing_yield.py` (criar)
 
 **7.13 — XP do recorde na virada**
 - Entrega: depois do rendimento, `award_record_xp` em cada cofrinho que passou do recorde.
@@ -717,7 +692,7 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 **7.14 — Ranque e carência na virada**
 - Entrega: sobe, abre carência (`grace_until` = data + 30 dias), encerra carência, cai; grava `rank_event` (`UP`, `GRACE_START`, `GRACE_END`, `DOWN`) e o `yield_rank_id` de amanhã.
 - Decisões: GAM-12 — ranque pelo cofrinho; GAM-14 — carência; GAM-19 — queda só na virada; COF-02 — % do CDI por ranque; CLI-07 — bloqueada segue na virada.
-- Arquivos: `src/controllers/day_closing_controller.py` (editar) · `tests/integration/internal/test_day_closing_rank.py` (criar)
+- Arquivos: `src/controllers/day_closing_controller.py` (editar) · `src/repositories/gamification_repository.py` (editar) · `tests/integration/internal/test_day_closing_rank.py` (criar)
 
 **7.15 — Encerrar só com cofrinho zerado**
 - Entrega: `close_account` recusa cofrinho diferente de zero com 409 `QIT001012`.
@@ -731,7 +706,7 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 **Branch:** `fase/09-categorias-impostos-sorteio` · **Depende de:** fase 7
 **Objetivo:** impostos no resgate, categorias criadas pelo dono e o sorteio que devolve a transferência.
 
-**9.1 — Impostos (unitário)**
+**9.1 — Impostos (unitário; COF-27 consolidada)**
 - Entrega: `ir_percent`, `iof_percent` (tabela regressiva real, até 29 dias) e `redemption_taxes` (IOF e IR do resgate, arredondados uma vez, para cima).
 - Decisões: COF-12 — IR e IOF reais; TST-05 — unitários.
 - Arquivos: `tests/unit/test_taxes.py` (criar) · `src/calculations/taxes.py` (criar) · `src/calculations/__init__.py` (editar)
@@ -739,10 +714,10 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 **9.2 — IR e IOF no resgate**
 - Entrega: `redeem` desconta os impostos sobre a parte de rendimento, em lançamentos `IOF` e `IR` a crédito da conta do banco.
 - Decisões: COF-08 — bruto e líquido; COF-12 — IR e IOF reais; COF-24 — imposto só sobre o rendimento; COF-25 — imposto para o banco.
-- Arquivos: `src/controllers/piggy_bank_controller.py` (editar) · `tests/integration/piggy_bank/test_redeem_taxes.py` (criar)
+- Arquivos: `src/controllers/piggy_bank_controller.py` (editar) · `src/repositories/entry_repository.py` (editar get_balance_before) · `tests/integration/piggy_bank/test_redeem_taxes.py` (criar)
 
 **9.3 — Categorias: repository, DTO e controller**
-- Entrega: `CategoryRepository` (`create`, `get_by_key`, `list_active_page`, `delete`, que muda o estado e grava o evento); `CategoryDTO`; `CategoryController`.
+- Entrega: `CategoryRepository` (`create`, `get_by_key`, `list_active_page`, `delete`, que muda o estado e grava o evento); `CategoryDTO` com status público em minúsculas (`active`, `deleted`); `CategoryController`.
 - Decisões: COF-03 — categorias; COF-04 — excluir categoria; COF-18 — nome único; API-15 — excluir categoria; R4 — append-only.
 - Arquivos: `src/repositories/category_repository.py` (editar) · `src/dtos/category_dto.py` (criar) · `src/dtos/__init__.py` (editar) · `src/controllers/category_controller.py` (criar) · `src/controllers/__init__.py` (editar)
 
@@ -767,9 +742,24 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 - Arquivos: `tests/unit/test_lottery.py` (criar) · `src/calculations/lottery.py` (criar) · `src/calculations/__init__.py` (editar)
 
 **9.8 — Chance de não debitar**
-- Entrega: depois de conferir o saldo, `transfer` sorteia; quando sai, a conta do banco devolve valor + tarifa num lançamento `PRIZE`, sem XP.
+- Entrega: depois de conferir o saldo, `transfer` sorteia; quando sai, a conta do banco devolve valor + tarifa num lançamento `PRIZE`, sem XP adicional; o valor transferido continua dando XP normal aos dois clientes (GAM-16, GAM-23).
 - Decisões: GAM-10 — chance de não debitar; GAM-22 — sorteio até R$ 100; GAM-23 — prêmio sem XP; TST-06 — sorteio injetável.
-- Arquivos: `src/controllers/transaction_controller.py` (editar) · `tests/integration/gamification/test_chance.py` (criar)
+- Arquivos: `src/controllers/transaction_controller.py` (editar) · `tests/integration/gamification/test_chance.py` (criar) · `tests/integration/gamification/test_fee_with_points.py` (editar)
+
+**9.9 — Consultar rendimento bruto e liquido**
+- Entrega: Consultar rendimento bruto e liquido.
+- Decisões: COF-28 — consulta; COF-27 — impostos; COF-26 — residuo congelado; MOV-11 — ordem das travas
+- Arquivos: `src/controllers/__init__.py` · `tests/integration/accounts/test_get_account.py` · `src/controllers/yield_controller.py` · `src/controllers/account_controller.py` · `src/controllers/category_controller.py` · `src/dtos/account_dto.py` · `src/dtos/category_dto.py` · `tests/integration/piggy_bank/test_yield_queries.py` · `tests/integration/categories/test_create_and_list_categories.py` · `tests/integration/categories/test_get_and_delete_category.py`
+
+**9.10 — Validar acumuladores antes de ultrapassar BIGINT**
+- Entrega: Validar acumuladores antes de ultrapassar BIGINT.
+- Decisões: DAD-19 — BIGINT e rollback integral; TST-09 — testes isolados de infraestrutura; R3 — erro de regra
+- Arquivos: `src/controllers/base_controller.py` · `src/controllers/transaction_controller.py` · `src/controllers/piggy_bank_controller.py` · `src/controllers/gamification_controller.py` · `src/controllers/day_closing_controller.py` · `tests/unit/infrastructure/test_numeric_limits.py` · `tests/integration/transactions/test_numeric_overflow.py`
+
+**9.11 — Rejeitar corpo e query inesperados em todas as rotas**
+- Entrega: Rejeitar corpo e query inesperados em todas as rotas.
+- Decisões: API-19 — entradas extras; API-03 — schema fechado; R8 — dono; API-04 e PRD-13 — precedencia dos tokens
+- Arquivos: `src/middlewares/input_contract.py` · `src/middlewares/__init__.py` · `src/app.py` · `tests/integration/test_unexpected_inputs.py`
 
 **9.fim — Fechar a fase** (AGENTS.md, seção 7).
 
@@ -798,10 +788,15 @@ Entre o 7.9 e o 7.10, o Bruno roda o script e faz o commit do arquivo de dados (
 - Decisões: TST-08 — provas extras; DAD-07 — saldo em dois lugares.
 - Arquivos: `tests/integration/extras/test_reconciliation.py` (criar)
 
-**11.5 — Nenhum erro 500 na suíte**
+**11.5 — Nenhum 5xx inesperado na suíte**
 - Entrega: uma fixture automática em `tests/conftest.py` reprova o teste que receber 500, ou 503 com código diferente de `QIT001031` e `QIT000503`; `ClientRequisition` guarda os status de cada teste.
 - Decisões: TST-08 — provas extras; R3 — nunca 500 por regra.
 - Arquivos: `tests/conftest.py` (editar) · `tests/utils/requisition.py` (editar)
+
+**11.6 — Provas reproduziveis de infraestrutura e PostgreSQL**
+- Entrega: provar a reconsulta após espera, ordem de travas, eventos, timeouts, sorteio, janela da barreira e encerramento durante a virada.
+- Decisões: TST-09 — infraestrutura controlada e PostgreSQL real; PRD-15 — barreira cliente/conta; GAM-26 — eventos de carência; MOV-19 — idempotência; PRD-08 e COF-20 — timeouts; CLI-05 — encerrada congela; COF-26 — resíduo do lote zerado congelado
+- Arquivos: `tests/unit/infrastructure/test_infrastructure_rules.py`, `tests/unit/infrastructure/test_day_closing_postgres.py`, `tests/integration/internal/test_customer_auth_barrier.py`
 
 **11.fim — Fechar a fase** (AGENTS.md, seção 7).
 
@@ -812,17 +807,17 @@ Formato: número da decisão → passo. "todas" = vale em todo passo, pelo `AGEN
 - **R:** 1→todas (integração só por HTTP; 4.7) · 2→7.10 · 3→3.2, 4.4, 5.2, 11.5 · 4→2.7, 5.10, 9.3 · 5→2.7, 5.1, 5.5 · 6→2.7, 3.3–3.6, 6.3 · 8→5.5, 5.7
 - **ESC:** 01→5.3, 5.6, 6.5, 6.8, 6.11 · 05→fases 8, 7 e 9
 - **ARQ:** 01→base · 02→todas · 03→2.7 · 04→4.2, 7.10 · 05→7.10 · 06→7.10 · 07→7.8, 7.10 · 08→7.10 · 09→base · 11→2.2–2.6 · 12→7.9
-- **DAD:** 01→2.7 · 04→2.7–2.13 · 05→2.7–2.13 · 06→2.7, 6.1 · 07→2.7, 6.1, 11.4 · 08→2.7, 3.3–3.6 · 09→2.7, 5.4 · 10→2.7 · 11→6.1 · 12→5.1, 5.4 · 13→6.4, 6.9 · 14→2.7, 8.2 · 15→2.7 · 16→6.7 · 17→2.7, 6.1, 6.11
+- **DAD:** 01→2.7 · 04→2.7–2.13 · 05→2.7–2.13 · 06→2.7, 6.1 · 07→2.7, 6.1, 11.4 · 08→2.7, 3.3–3.6 · 09→2.7, 5.4 · 10→2.7 · 11→6.1 · 12→5.1, 5.4 · 13→6.4, 6.9 · 14→2.7, 8.2 · 15→2.7 · 16→6.7 · 17→2.7, 6.1, 6.11 · 18→2.7 (nove exceções de key) · 19→3.2, 9.10
 - **CLI:** 01→5.6 · 02→5.2, 5.3 · 03→5.2 · 04→2.7, 5.5, 5.6, 5.11 · 05→5.10, 5.11 · 06→5.11, 6.12, 7.15 · 07→7.12–7.14 · 08→6.9 · 09→6.4, 6.6, 6.7, 7.4, 8.6, 9.4
 - **MOV:** 01→6.7, 11.1 · 02→6.7 · 03→6.7 · 04→3.4, 6.11, 7.7 · 05→6.7, 11.1 · 06→6.3 · 07→6.4, 6.6 · 08→6.6, 6.7 · 09→6.4, 6.7, 7.4 · 10→6.3, 8.7 · 11→6.7, 11.3 · 12→2.7, 6.4, 6.6, 6.8, 7.4, 11.2 · 14→6.11 · 15→6.4, 6.6 · 16→2.7, 3.3, 6.4, 6.5 · 17→6.2, 6.11 · 18→6.2, 6.11 · 19→6.1, 6.4, 11.2
 - **COF:** 01→5.4, 7.4 · 02→7.1, 7.2, 7.12, 7.14 · 03→5.4, 9.3, 9.6 · 04→9.3, 9.5 · 05→7.7, 9.4 · 06→7.3, 7.4, 9.6 · 07→7.4, 9.6 · 08→7.4, 9.2 · 10→7.4–7.6 · 11→7.4, 7.5 · 12→9.1, 9.2 · 13→7.2, 7.12 · 14→2.7, 5.4 · 15→2.7, 7.2, 7.12 · 16→7.12 · 17→7.8, 7.9 · 18→2.7, 9.3, 9.4 · 19→9.6 · 20→7.8, 7.11 · 21→2.7 · 22→7.12 · 23→2.7, 7.3, 7.12 · 24→7.1, 7.4, 9.2 · 25→2.7, 9.2
-- **GAM:** 01→8.4 · 02→8.3 · 04→8.3, 7.4, 7.13 · 05→8.1 · 06→8.3, 8.6 · 07→8.6 · 09→6.3, 8.7 · 10→9.7, 9.8 · 11→9.7 · 12→7.1, 7.14 · 13→7.1 · 14→7.14 · 15→8.1 · 16→8.1, 8.5 · 17→8.5 · 18→8.1, 8.5 · 19→7.4, 7.12–7.14 · 21→8.6 · 22→9.7, 9.8 · 23→9.8 · 24→8.1, 8.5 · 25→8.1, 7.13
+- **GAM:** 01→8.4 · 02→8.3 · 04→8.3, 7.4, 7.13 · 05→8.1 · 06→8.3, 8.6 · 07→8.6 · 09→6.3, 8.7 · 10→9.7, 9.8 · 11→9.7 · 12→7.1, 7.14 · 13→7.1 · 14→7.14 · 15→8.1 · 16→8.1, 8.5 · 17→8.5 · 18→8.1, 8.5 · 19→7.4, 7.12–7.14 · 21→8.6 · 22→9.7, 9.8 · 23→9.8 · 24→8.1, 8.5 · 25→8.1, 7.13 · 26→7.4, 11.6
 - **DIA:** 01→2.7, 6.1, 7.11 · 02→7.11 · 03→7.11–7.14 · 04→2.7 · 05→3.6, 7.11
-- **API:** 01→3.2 · 02→3.1 e cada passo de rota · 03→3.3–3.6 · 04→base, 4.6 · 05→3.1 · 06→3.1 · 07→3.1 · 08→3.1, 5.5 · 09→5.5, 5.7 · 10→3.1, 6.8, 6.10 · 11→3.2 · 12→3.2 · 13→3.1, 4.3, 5.10 · 14→8.2, 8.4 · 15→2.7, 9.3, 9.5 · 16→4.2, 5.4–5.6 · 17→5.8 · 18→3.3–3.5, 6.5
+- **API:** 01→3.2 · 02→3.1 e cada passo de rota · 03→3.3–3.6 · 04→base, 4.6 · 05→3.1 · 06→3.1 · 07→3.1 · 08→3.1, 5.5 · 09→5.5, 5.7 · 10→3.1, 6.8, 6.10 · 11→3.2 · 12→3.2 · 13→3.1, 4.3, 5.10 · 14→8.2, 8.4 · 15→2.7, 9.3, 9.5 · 16→4.2, 5.4–5.6 · 17→5.8 · 18→3.3–3.5, 6.5 · 19→9.11
 - **PRD:** 01→4.2 · 02→base, 4.5 · 03→7.8 · 04→4.6 · 06→2.7, 4.1, 4.5 · 07→4.2, 4.3 · 08→4.2, 4.4 · 10→4.6, 5.9 · 12→4.5, 6.2 · 13→4.3 · 14→2.7, 4.1, 4.5
-- **TST:** 01→todas · 02→todas · 03→5.3, 5.6, 6.8, 6.11 · 05→2.1, 6.3, 8.1, 7.1, 7.2, 9.1, 9.7 · 06→9.7, 9.8 · 07→todas · 08→11.1–11.5
+- **TST:** 01→todas · 02→todas · 03→5.3, 5.6, 6.8, 6.11 · 05→2.1, 6.3, 8.1, 7.1, 7.2, 9.1, 9.7 · 06→9.7, 9.8 · 07→todas · 08→11.1–11.6 · 09→9.10, 11.6
 
-**Não viram código:** R7 · ESC-02, ESC-03, ESC-04, ESC-06, ESC-08 · TIM-01 a TIM-08 (TIM-03, TIM-04 e TIM-08 regem o `AGENTS.md`; TIM-07 é a fase 0) · ARQ-10 · MOV-13 · PRD-05, PRD-09, PRD-11 · RFC-01 a RFC-07 · as partes "se sobrar tempo": o gatilho da DAD-11 e o nginx da ARQ-06 e da PRD-10. A decidir, sem efeito no código: ESC-07, RFC-06.
+**Não viram código:** R7 · ESC-02, ESC-03, ESC-04, ESC-06, ESC-08 · TIM-01 a TIM-08 (TIM-03, TIM-04 e TIM-08 regem o `AGENTS.md`; TIM-07 é a fase 0) · ARQ-10 · MOV-13 · PRD-05, PRD-09, PRD-11 · RFC-01 a RFC-07 · as partes "se sobrar tempo": o gatilho da DAD-11 e o nginx da ARQ-06 e da PRD-10. A decidir: ESC-07 (nome do banco) e RFC-06 (destaque da RFC), sem bloquear implementação. As nove lacunas técnicas da auditoria foram fechadas e aplicadas aos roteiros.
 
 ## (b) Requisitos do desafio → passo
 
@@ -846,32 +841,185 @@ Formato: número da decisão → passo. "todas" = vale em todo passo, pelo `AGEN
 ## (c) Feito à mão
 
 1. **Agora — fase 0.** Os comandos estão na seção "Fase 0".
-2. **Antes de cada fase — o plano da fase na `main`.** Só depois do merge da fase anterior. Salve o `PLANO-fase-NN.md` em `docs\plano\` e rode:
+2. **Uma vez no começo — todos os planos na main.** Copie os arquivos conforme 0.5 e peça ao Codex para conferir e registrar o commit local docs(plano): roteiros auditados. Depois execute as fases na ordem do índice; não há preparação documental entre elas.
 
-   ```powershell
-   git switch main
-   git pull --ff-only origin main
-   git add -- docs/plano/PLANO-fase-NN.md
-   git commit -m "docs(plano): fase NN"
-   git push origin main
-   ```
-
-   Depois, peça ao agente: `Execute os passos N.1 a N.fim de docs/plano/PLANO-fase-NN.md`.
 3. **Enquanto o agente roda.** Docker Desktop ligado. Quando ele parar, traga o relatório (PASSO / O QUE FIZ / ONDE PAREI / ERRO / ARQUIVOS ALTERADOS) para o chat; a correção vira um passo novo no plano.
 4. **Na fase 7, entre o 7.9 e o 7.10 — os dados do CDI.** Na pasta do repositório, na branch `fase/07-cofrinho`:
 
    ```powershell
    ./.venv/Scripts/python.exe scripts/download_cdi.py
-   git status --short
+   git status --short --untracked-files=all
    git add -- mockserver/cdi_expectations.json
    git commit -m "chore(cdi): dados do CDI para o mockserver"
-   git push origin fase/07-cofrinho
    ```
 
-   O `git status --short` mostra só `?? mockserver/cdi_expectations.json`. Antes do commit, abra o arquivo e confira três datas contra o site do Banco Central (ARQ-12).
+   O `git status --short --untracked-files=all` mostra só `?? mockserver/cdi_expectations.json`. Antes do commit, abra o arquivo e confira três datas contra o site do Banco Central (ARQ-12).
 5. **Quando o `04 - Decisões.md` mudar.** Entre duas fases, copie de novo para `docs/decisoes.md` e faça o commit na `main` com a mensagem `docs(decisoes): espelho do 04` (TIM-07).
 6. **Se usar o Claude Code.** Passo 0.5, antes da primeira sessão.
 7. **Depois da fase 11 — README.** O `README.md` e o `docs/como-o-projeto-e-organizado.md` do base falam do `sample_entity`. Reescrever o README (como subir, como rodar os testes, as rotas) com o Claude Cowork e decidir o destino do outro arquivo; commit na `main`.
 8. **Etapa 10 (09–10/10) — RFC.** Com o Claude Cowork, a partir do `docs/rotas.md` e do diagrama do 10; PDF de 2 a 4 páginas.
 9. **Etapa 12 (11/10) — teste de fogo e publicação.** Checklist da máquina limpa no GitHub Codespaces (ARQ-10); repositório público até a noite (RFC-07).
 10. **Etapa 13 (12/10, até 10h) — entrega.** PDF e link; guardar o comprovante.
+
+
+## Registro complementar de nomes — auditoria 08/10/2026
+
+As assinaturas abaixo completam o registro original; valem na ordem 2 → 3 → 4 → 5 → 6 → 8 → 7.
+
+### Complemento da fase 02
+
+| Onde | Nomes |
+|---|---|
+| Relacionamentos | `Account.account_type`, `Account.status`, `Account.rank`, `Account.yield_rank` · `AccountStatusEvent.status`, `AccountStatusEvent.block_reason` · `Transaction.transaction_type` · `Category.status` · `CategoryStatusEvent.status` · `Entry.entry_type` · `RankEvent.rank` |
+| Constantes dos tipos fixos | `AccountType`: `CUSTOMER`, `PIGGY_BANK`, `BANK`, `OUTSIDE_WORLD` · `AccountStatus`: `ACTIVE`, `BLOCKED`, `CLOSED` · `BlockReason`: `SUSPICIOUS_ACTIVITY`, `JUDICIAL_ORDER`, `CUSTOMER_REQUEST`, `MANUAL_REVIEW` · `TransactionType`: `DEPOSIT`, `WITHDRAWAL`, `TRANSFER`, `SAVE`, `REDEEM`, `YIELD` · `EntryType`: `AMOUNT`, `FEE`, `PRIZE`, `YIELD`, `IOF`, `IR` · `CategoryStatus`: `ACTIVE`, `DELETED` · `PiggyRank`: `DEFAULT`, `BRONZE`, `SILVER`, `GOLD`, `PLATINUM`, `DIAMOND` |
+| Constantes das colunas com `CHECK` | `RequestLog`: `INTERNAL`, `ADMIN`, `ACCOUNT` · `AccountStatusEvent`: `MANUAL`, `AUTOMATIC` · `XpEvent`: `TRANSFER_SENT`, `TRANSFER_RECEIVED`, `PIGGY_RECORD` · `RankEvent`: `UP`, `GRACE_START`, `GRACE_END`, `DOWN` · `PointsEvent`: `APPLY`, `RESET`, `FEE`, `CHANCE` |
+| Comando | a conferência C1 (`docker compose exec -T api python -c ...`) |
+
+### Complemento da fase 03
+
+Registro de referência: usar as assinaturas nos passos que as criam.
+
+| Onde | Nomes |
+|---|---|
+| Campos de resposta (`docs/rotas.md`) | `account_token` · `piggy_bank_balance` · `gross_amount`, `iof`, `ir`, `net_amount` (resgate e `GET` de operação `REDEEM`) · `entries` (no `GET` da operação) · item do extrato: `entry_key`, `transaction_key`, `transaction_type`, `entry_type`, `amount`, `balance_after`, `category`, `counterparty`, `accounting_date`, `created_at` · gamificação: `level`, `xp`, `xp_to_next_level`, `points_free`, `points_fee`, `points_chance`, `fee_percent`, `chance_percent`, `rank`, `cdi_percent`, `piggy_record`, `grace_until` · categoria: `category_key`, `name`, `is_default`, `status`, `balance`, `created_at` · virada: `closed_date`, `accounting_date` |
+| `counterparty.type` | `CUSTOMER`, `DEPOSITOR`, `BANK`, `PIGGY_BANK`, `ACCOUNT` (saque: `counterparty` nulo) |
+| Formatos | CNPJ mascarado `**.222.333/****-**` (6.2) · token da conta `secrets.token_urlsafe(32)` (5.4) · percentuais em texto (`"0.9"`) · valores fixos em maiúsculas na resposta |
+| Idempotência | "mesmo pedido" = mesma `account_key` da URL e mesmo corpo: `hash_request_body` (6.4) recebe a `account_key` e o corpo |
+| Erros | parâmetros do `__init__` de cada classe: tabela do passo 3.2 · `InvalidDocumentNumber()` e `DuplicatedDocumentNumber()` sem parâmetro |
+| Schemas | `"$schema": "http://json-schema.org/draft-04/schema#"` em todos · `amount` com `"maximum": 9223372036854775807` · keys só em minúsculas, 36 caracteres |
+| Teste | `tests/unit/test_schema_files.py`: `EXPECTED_SCHEMAS`, `FIELD_RULES` (schema novo em fase futura entra nos dois) |
+
+### Complemento da fase 04
+
+Registro de referência: usar as assinaturas nos passos que as criam.
+
+| Onde | Nomes |
+|---|---|
+| `src/middlewares/admin_token.py` | `is_internal_path(path)` |
+| `src/middlewares/request_log_writer.py` | `ACCOUNT_KEY_IN_PATH`, `get_client_ip(request)`, `account_key_from_path(path)`, `save_request_log(request, request_state, status, error_code)` |
+| `src/middlewares/auth_barrier.py` | `INTERNAL_AUTH_FAILURES` |
+| `src/errors/handlers.py` | `is_database_timeout(exception)`; handler de `OperationalError` (timeout → 503 `QIT000503`; o resto → 500 `QIT000500`) |
+| `src/database.py` | `DB_TIMEOUT_OPTIONS` |
+| `RequestLogRepository` | `create(request_id, method, path, status, error_code, client_ip, account_key, auth_failure)`; `count_auth_failures(client_ip, auth_failures, window_minutes, account_key=None)` (o 5.9 usa o `account_key`) |
+| `RequestState` | `account_key` é preenchido pelo `request_log_writer` antes da rota; a checagem de dono (5.5) grava `auth_failure = "ACCOUNT"` no mesmo objeto |
+| `tests/utils/request_generator.py` | `_headers`, `_send`; parâmetros `internal_token` (todas) e `admin_token` (as 3 internas), com padrão; `account_token` obrigatório nas rotas "conta"; `params` nas 3 listas; valor `None` tira o cabeçalho |
+| `PayloadGenerator` | assinaturas do passo 4.8; padrões: `deposit` 100000 centavos, os outros valores 1000; `saving` e `redemption` sem `category_key` quando ele é `None` |
+| `ObjectGenerator` | `create_customer` devolve a `customer_key`; `create_account` e `create_funded_account` devolvem `{"customer_key", "account_key", "account_token"}` |
+| Testes | pasta `tests/integration/security/`; caminhos `/nao_existe` e `/internal/nao_existe` (nunca viram rota) |
+
+### Complemento da fase 05
+
+Registro de referência: usar as assinaturas nos passos que as criam.
+
+| Onde | Nomes |
+|---|---|
+| `CustomerRepository` | `get_by_id(customer_id)` (para o `customer_key` no `GET` da conta); assinatura `create(name, document_number, email, birthdate)` |
+| `CustomerController` | constante `MINIMUM_AGE = 18`; `create(customer_data)`; `get_by_key(customer_key, account_token)`; `_parse_birthdate`, `_age_in_years` |
+| `CustomerDTO` | `obj_to_dict(customer)`, `only_obj_key(customer)` |
+| `src/utils/account_token.py` | `ACCOUNT_TOKEN_BYTES = 32`; `account_token_matches(account_token, token_hash)` aceita `None` nos dois e devolve `False` |
+| `AccountRepository` | `create_customer_account(customer, token_hash)` (cria a conta, o cofrinho e o evento `ACTIVE`; ranque `DEFAULT`); `get_by_key(account_key)`; `get_customer_account(account_key)`; `get_open_account_by_customer(customer)`; `get_piggy_bank(account)`; `get_system_account(account_type_enumerator)`; `lock_accounts(accounts)` (devolve a lista travada, na ordem do `id`); `change_status(account, status_enumerator, source=None, block_reason_enumerator=None)`; `_add_status_event`, `_get_fixed_type` |
+| `CategoryRepository` | constante `DEFAULT_CATEGORY_NAME = "economias"`; `create_default(piggy_bank)` (grava o evento `ACTIVE`); `get_default(piggy_bank)` |
+| `AccountDTO` | `obj_to_dict(account, customer, piggy_bank)`; `open_account_to_dict(account, account_token)` |
+| `BaseController` | `mark_account_auth_failure()`; `get_owned_account(account_key, account_token)` |
+| `AccountController` | `open_account(customer_key)`; `get_account(account_key, account_token)`; `block_account(account_key, reason)`; `unblock_account(account_key)`; `close_account(account_key, account_token)`; `_get_locked_customer_account(account_key)` |
+| Resources | `CustomerResource.on_post`, `on_get_by_key(customer_key, request)`; `AccountResource.on_post_account(customer_key)`, `on_get_by_key(account_key, request)`, `on_delete_by_key(account_key, request)`; `InternalResource.on_post_block(account_key, payload)`, `on_post_unblock(account_key)`. O `ACCOUNT-TOKEN` é lido no resource por `request.headers.get(ACCOUNT_TOKEN_HEADER)` |
+| `src/middlewares/auth_barrier.py` | `ACCOUNT_AUTH_FAILURES`; `count_failures(client_ip, account_key)` |
+| Testes | pastas `tests/integration/customers/`, `tests/integration/accounts/`, `tests/integration/internal/`; ajudantes locais `assert_no_internal_id`, `birthdate_for_age`, `birthdate_turning_age_in_two_days`, `account_status`; chave malformada de teste `nao-e-uma-key` |
+| Comportamento | o fechamento da conta (6.12, 7.15) entra entre a regra 3 do `close_account` e o `change_status`; o bloqueio automático (6.9) usa `change_status(account, AccountStatus.BLOCKED, AccountStatusEvent.AUTOMATIC, BlockReason.SUSPICIOUS_ACTIVITY)` |
+
+### Complemento da fase 06
+
+Registro de referência: usar as assinaturas nos passos que as criam.
+
+| Onde | Nomes |
+|---|---|
+| `TransactionRepository` | assinaturas: `create(transaction_type_enumerator, request_control_key, request_hash, accounting_date)`; `get_by_key_for_account(transaction_key, account_ids)`; `count_transfers_sent(account, accounting_date, since)` |
+| `EntryRepository` | `create(transaction, account, entry_type_enumerator, amount, category=None)`; `list_by_transaction(transaction, account_ids)` (6.1, novo); `get_transfer_counterparty_customer(entry)` (6.1, novo); `list_page(account, limit, offset)` devolve pares (lançamento, operação) |
+| `DepositRepository` | `create(transaction, depositor_name, depositor_document)`; `get_by_transaction(transaction)` (6.1, novo) |
+| `BankClockRepository` | `get_accounting_date()` com `FOR SHARE`; `lock()`; `advance(bank_clock)` (+1 dia) |
+| `AccountRepository` | `get_active_since(account)` (6.9, novo) |
+| `src/utils/document_number.py` | constantes `CNPJ_LENGTH`, `CNPJ_FIRST_WEIGHTS`, `CNPJ_SECOND_WEIGHTS`, `FORMATTED_CPF_LENGTH`, `FORMATTED_CNPJ_LENGTH` |
+| `src/utils/request_hash.py` | assinatura `hash_request_body(transaction_type, account_key, payload)` |
+| `src/calculations/fee.py` | constantes `FULL_FEE_TENTHS_OF_PERCENT`, `MAX_FEE_POINTS`, `TENTHS_OF_PERCENT_DIVISOR` |
+| `TransactionDTO` | `only_obj_key(transaction)`, `with_balance(transaction, balance)`, `obj_to_dict(transaction, entries)` |
+| `EntryDTO` | `obj_to_dict(entry, transaction, counterparty, category=None)`, `customer_counterparty(customer)`, `depositor_counterparty(deposit)`, `bank_counterparty()` |
+| `TransactionController` | constante `DAILY_TRANSFER_LIMIT` no ambiente, padrão 10; assinaturas `deposit(account_key, deposit_data)`, `withdraw(account_key, account_token, withdrawal_data)`, `transfer(account_key, account_token, transfer_data)`, `get_transaction(account_key, account_token, transaction_key)`, `list_entries(account_key, account_token, limit, offset)`; privados `_find_repeated`, `_is_valid_depositor_document`, `_balance_after`, `_entry_to_dict`, `_counterparty` |
+| `TransactionResource` | `on_post_deposit(account_key, payload)`, `on_post_withdrawal(account_key, payload, request)`, `on_post_transfer(account_key, payload, request)`, `on_get_transaction(account_key, transaction_key, request)`, `on_get_entries(account_key, request)`; constantes `DEFAULT_LIMIT = 10`, `DEFAULT_PAGE = 0` |
+| `AccountController.close_account` | regra 4 (saldo zero); o cofrinho zerado do 7.15 entra entre a regra 4 e o `change_status` |
+| Testes | pasta `tests/integration/transactions/`; ajudantes locais `balance_of`, `account_of`, `deposit`, `withdraw`, `transfer`, `send_transfers`, `assert_balances`, `assert_limit_reached`, `assert_transaction`, `masked_cpf`, `create_named_account`, `get_transaction`, `get_entries`, `all_entries`; `assert_no_internal_id` passa a descer em todos os níveis |
+| Comportamento | ordem de toda operação de dinheiro: dono (ou conta existe) → repetição → relógio (`FOR SHARE`) → trava → regras → gravação |
+
+### Complemento da fase 08
+
+Registro de referência: usar as assinaturas nos passos que as criam.
+
+| Onde | Nomes |
+|---|---|
+| `src/calculations/xp.py` | constantes `LEVEL_COST_FACTOR`, `TRANSFER_XP_CENTS_DIVISOR`, `LOG_ARGUMENT_FACTOR`, `CENTS_PER_REAL`, `LOG_PRECISION`; privados `_transfer_xp_per_cent`, `_record_xp_per_real`, `_gain`; `XpGain` é `NamedTuple` |
+| `GamificationRepository` | assinaturas `create_xp_event(account, source, xp, accounting_date, transaction=None)`, `create_level_event(account, level, accounting_date)`, `create_points_event(account, action, points, benefit=None)`, `create_rank_event(account, rank_enumerator, kind, accounting_date)`; novos `update_progress(account, level, xp, points_free)`, `update_points(account, points_free, points_fee, points_chance)`, `update_piggy_record(account, piggy_record)` |
+| `GamificationDTO` | `obj_to_dict(account)`, `percent_text(tenths_of_percent)`; constantes `CDI_PERCENT_BY_RANK`, `TENTHS_PER_PERCENT` |
+| `GamificationController` | `get_gamification(account_key, account_token)`; `award_transfer_xp` e `award_record_xp` devolvem `XpGain` (`award_record_xp` devolve `None` quando o saldo não passa do recorde; `transaction` aceita `None`); `apply_points(account_key, account_token, point_application_data)`; `reset_points(account_key, account_token)`; privado `_apply_xp_gain` |
+| `TransactionController` | atributo `gamification_controller` |
+| `GamificationResource` | `on_get(account_key, request)`, `on_post_point_application(account_key, payload, request)`, `on_post_point_reset(account_key, request)` |
+| Testes | pasta `tests/integration/gamification/`; ajudantes locais `gamification_of`, `progress_of`, `points_of`, `send`, `create_level_one_account`, `create_account_with_levels`, `apply_points`, `reset_points`, `assert_points`, `fee_paid`; constantes `LEVEL_ONE_AMOUNT = 400000`, `LEVEL_TWO_AMOUNT = 1700000`, `LEVEL_TEN_AMOUNT = 83000000` |
+| Comportamento | o XP da transferência entra depois dos lançamentos e antes do commit, dentro do `try` do `IntegrityError`; a fase 7 chama `award_record_xp(account, transaction, accounting_date)` com a conta de cliente travada e o saldo novo do cofrinho já escrito na sessão |
+
+### Complemento da fase 07
+
+Registro de referência: usar as assinaturas nos passos que as criam.
+
+| Onde | Nomes |
+|---|---|
+| `src/calculations/piggy_yield.py` | constantes `EIGHT_PLACES`, `PERCENT`, `YIELD_PRECISION`; assinaturas `daily_rate(cdi_daily_percent, rank_cdi_percent)` (os dois em texto) e `lot_yield(lot_balance_cents, residue, rate)` → `(centavos, resíduo)` |
+| `src/calculations/lots.py` | `split_redemption` devolve `(principal, rendimento)` |
+| `src/calculations/ranks.py` | ranques em texto (`"DEFAULT"` … `"DIAMOND"`); `RANK_CDI_PERCENT` em texto (`"102.5"`) |
+| `LotRepository` | `create(category, transaction, accounting_date, principal)`; `list_open_for_update(category)`; `list_open_by_piggy_bank_for_update(piggy_bank)`; novo `update_remaining(lot, principal_remaining, yield_remaining, residue)` |
+| `CategoryRepository` | `get_balance(category)` (soma dos lançamentos, `int`); novo `get_by_id(category_id)` |
+| `EntryRepository` | `list_piggy_bank_page(piggy_bank, limit, offset, category=None)`; novo `get_counterparty_category(entry)` |
+| `AccountRepository` | novo `list_open_customer_accounts()` |
+| `GamificationRepository` | novos `update_rank(account, rank_enumerator, grace_until)`, `update_yield_rank(account, rank_enumerator)` |
+| `GamificationController` | novo `raise_rank(account, piggy_bank, accounting_date)` → `bool` |
+| `PiggyBankController` | `save(account_key, account_token, saving_data)`; `redeem(account_key, account_token, redemption_data)`; `list_piggy_bank_entries(account_key, account_token, limit, offset, category_key=None)`; novo `get_redemption_amounts(transaction, piggy_bank)`; privados `_take_from_lots`, `_get_category`, `_lock_account_and_piggy_bank`, `_saving_response`, `_redemption_response`, `_find_repeated`, `_balance_after`, `_piggy_bank_entry_to_dict` |
+| `DayClosingController` | `close_day(day_closing_data)`; privados `_pay_yield`, `_update_rank`, `_lock_account_and_piggy_bank`, `_parse_accounting_date` |
+| `TransactionController` | atributos `category_repository`, `piggy_bank_controller` |
+| `TransactionDTO` | novos `with_piggy_bank_balance(transaction, balance, piggy_bank_balance)`, `with_redemption(transaction, balance, piggy_bank_balance, redemption_amounts)`; `obj_to_dict(transaction, entries, redemption_amounts=None)` |
+| `EntryDTO` | novos `piggy_bank_counterparty(category)`, `account_counterparty()` |
+| `PiggyBankResource` | `on_post_saving(account_key, payload, request)`, `on_post_redemption(account_key, payload, request)`, `on_get_piggy_bank_entries(account_key, request)`; constantes `DEFAULT_LIMIT = 10`, `DEFAULT_PAGE = 0` |
+| `InternalResource` | `on_post_day_closing(payload)` |
+| `BcbConnector` | constantes `CDI_SERIES_PATH`, `CDI_RATE_PATTERN` |
+| `scripts/download_cdi.py` | `SERIES_URL`, `START_DATE`, `END_DATE`, `CHECK_DATES`, `OUTPUT_FILE`; `download_rates`, `build_expectation`, `main` |
+| `tests/utils/mock_generator.py` | `MOCKSERVER_URL`, `CDI_SERIES_PATH`, `TEST_PRIORITY = 10`, `READY_TIMEOUT_SECONDS = 60`; assinaturas `set_cdi_rate(accounting_date, cdi_rate=None)`, `set_cdi_delay(accounting_date, delay_seconds, cdi_rate="0.054266")`, `clear_cdi(accounting_date)`; id da expectativa `cdi-test-AAAA-MM-DD` |
+| Testes | pasta `tests/integration/piggy_bank/`; ajudantes locais `balances_of`, `record_progress_of`, `piggy_bank_balance_of`, `piggy_bank_entries`, `default_category_key`, `bank_date`, `day`, `rank_of`, `create_account_in_grace`; constantes `CDI = "0.054266"`, `ONE_PERCENT`, `HALF_PERCENT`, `FIRST_DAY` |
+| Comportamento | guardar e resgatar travam a conta e o cofrinho; a virada trava o relógio, depois cada conta de cliente não encerrada e o cofrinho dela; o rendimento é uma operação `YIELD` por cofrinho por dia, com um par de lançamentos por categoria |
+
+
+
+### Complementos auditados das fases 09 e 11
+
+- COF-26: lotes zerados ficam fora do rendimento; prova de residuo congelado e novo lote em 11.6.
+- COF-27: base exata do IR, arredondamento agregado e teto em 9.1/9.2; caso (15 dias, 9 centavos) exige IOF 5 e IR 2.
+- COF-28: campos/contrato no 3.1; YieldController e DTOs em 9.9; conta soma estimativas separadas por categoria.
+- PRD-15: RequestLogRepository.resolve_customer_auth_key e auth_barrier no 5.9; provas HTTP e janela PostgreSQL no 11.6.
+- GAM-26: GRACE_END anterior a UP no 7.4, comprovado no 11.6.
+- DAD-19: NumericLimitExceeded, 422 QIT001032, definido no 3.2; BaseController.check_numeric_limits e chamadas sob trava no 9.10.
+- API-19: src/middlewares/input_contract.py, registro mais interno no 9.11; preserva autenticacao/404/405.
+- TST-09: tests/unit/infrastructure contem provas controladas e tres provas PostgreSQL no 11.6. Rodar a pasta inteira exige compose; o arquivo test_infrastructure_rules.py usa somente dependencias controladas.
+
+Nomes: YieldController.lock_snapshot/account_summary/category_summary; AccountDTO.obj_to_dict(account, customer, piggy_bank, yield_summary); CategoryDTO.obj_to_dict(category, balance, yield_summary); EntryRepository.get_balance_before(account, transaction); register_input_contract_middleware.
+
+Contagens finais: fase 09 = 401 (256 integracao + 145 unitarios); fase 11 = 426 (271 integracao + 155 em tests/unit, incluindo 3 PostgreSQL). tests/integration/extras contem 13 testes. Os fechamentos exigem todos os passos; nao ha corte opcional.
+
+## Consolidação das decisões — 08/10/2026
+
+As nove lacunas da auditoria estão fechadas no 04 e em `score/docs/decisoes.md`. As escolhas A já registradas pelo Bruno foram preservadas; COF-26 foi confirmada na conversa; PRD-15, TST-09, API-19 e GAM-26 foram decididas por delegação técnica expressa.
+
+Regras incorporadas nesta segunda auditoria aos passos indicados, com testes, listas e resultados esperados:
+
+- Fases 2/3: DAD-18 explicita as nove exceções à key, sem mudar o SQL; DAD-19 reserva `NumericLimitExceeded`, HTTP 422, `QIT001032`. Testar acumulador no máximo e tentativa de ultrapassá-lo, com rollback integral; entrada individual inválida permanece 400.
+- Fases 4/5: PRD-15 compartilha conta + IP entre consulta do cliente e rotas da conta, com fallback cliente + IP. Testar janela/limite e cliente desconhecido sem revelar token. API-19 rejeita corpo/query inesperados inclusive nas rotas sem schema, preservando autenticação/404/405.
+- Fases 6/8/7: DAD-19 exige validar todos os acumuladores antes das escritas sob trava; testar também XP, recorde e virada, com todos os efeitos desfeitos no estouro.
+- Fase 7: COF-26 preserva o resíduo congelado do lote zerado; testar que nova virada e novo aporte não reativam nem transferem a fração. GAM-26 exige GRACE_END do ranque anterior seguido de UP do novo, no mesmo commit; sem carência, somente UP.
+- Fase 9: COF-27 define base exata, agregação e limite do IR; testar rendimento de 1 centavo, lotes de prazos distintos, resgate parcial e impostos zero. COF-28 define os campos dos GETs e a soma por categoria da estimativa da conta; comparar consulta e resgate total na mesma data contábil.
+- Fase 11: TST-09 autoriza testes isolados de infraestrutura; manter provas HTTP e provar a corrida encerramento/virada também no PostgreSQL real.
+
+Os roteiros 09/11 estão escritos e auditados. Isso não representa implementação da API: as fases continuam por executar no score.

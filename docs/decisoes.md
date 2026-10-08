@@ -1,6 +1,6 @@
 ---
 tipo: decisoes
-atualizado: 2026-10-07
+atualizado: 2026-10-08
 tags: [contexto, bootcamp, decisoes]
 ---
 
@@ -10,7 +10,7 @@ tags: [contexto, bootcamp, decisoes]
 
 Todas as regras e decisões do projeto, uma por linha: o **código** e a regra. O porquê de cada uma está em [[04 - Decisões explicadas]], na mesma ordem e com os mesmos códigos.
 
-**Situação (07/10):** 45 fixas · 129 decididas · 2 a decidir (nenhuma toca o banco nem o código): o `database.sql` está liberado.
+**Situação (08/10):** 45 fixas · 138 decididas · 2 a decidir (nome do banco e destaque da RFC), além de **10 consolidações ARR** de regras já contadas nos tópicos originais. As nove lacunas da auditoria estão fechadas e aplicadas aos roteiros auditados em 08/10; a implementação dos passos ainda está pendente.
 
 **Como ler**
 
@@ -20,7 +20,7 @@ Todas as regras e decisões do projeto, uma por linha: o **código** e a regra. 
 - Para responder uma decisão aberta: escreva na linha **Escolha** dela, em [[04 - Decisões explicadas#A decidir]], a letra ou a sua resposta (ou `?`, para pedir explicação).
 - Decisão nova: entra em "A decidir", nos dois arquivos, com o próximo número do tópico; ao fechar, vai para o tópico.
 
-**Tópicos:** [[#A decidir|A decidir]] · [[#0. Regras do jogo|Regras]] · [[#1. Escopo — ESC|ESC]] · [[#2. Time e processo — TIM|TIM]] · [[#3. Arquitetura e ambiente — ARQ|ARQ]] · [[#4. Modelo de dados — DAD|DAD]] · [[#5. Cliente e conta — CLI|CLI]] · [[#6. Dinheiro em movimento — MOV|MOV]] · [[#7. Cofrinho — COF|COF]] · [[#8. Gamificação — GAM|GAM]] · [[#9. Virada do dia — DIA|DIA]] · [[#10. Rotas, contrato e erros — API|API]] · [[#11. Segurança|Segurança]] · [[#12. Produção (Aula 4) — PRD|PRD]] · [[#13. Testes — TST|TST]] · [[#14. RFC e entrega — RFC|RFC]]
+**Tópicos:** [[#A decidir|A decidir]] · [[#0. Regras do jogo|Regras]] · [[#1. Escopo — ESC|ESC]] · [[#2. Time e processo — TIM|TIM]] · [[#3. Arquitetura e ambiente — ARQ|ARQ]] · [[#4. Modelo de dados — DAD|DAD]] · [[#5. Cliente e conta — CLI|CLI]] · [[#6. Dinheiro em movimento — MOV|MOV]] · [[#7. Cofrinho — COF|COF]] · [[#8. Gamificação — GAM|GAM]] · [[#9. Virada do dia — DIA|DIA]] · [[#10. Rotas, contrato e erros — API|API]] · [[#11. Segurança|Segurança]] · [[#12. Produção (Aula 4) — PRD|PRD]] · [[#13. Testes — TST|TST]] · [[#14. RFC e entrega — RFC|RFC]] · [[#15. Arredondamento — ARR|ARR]]
 
 ---
 
@@ -78,12 +78,12 @@ Como o time trabalha até a entrega.
 
 **Decididas**
 
-- **TIM-03** IA: Codex dentro do repositório (escreve e roda código e testes no Docker local); Claude Cowork nas regras, na RFC, na revisão e nas notas. Falta um `AGENTS.md` dentro do repositório.
+- **TIM-03** IA: Codex em todo o projeto (plano, código, testes locais, revisão, RFC e notas), conforme Bruno em 08/10. O score já tem AGENTS.md; sincronizar esta mudança no espelho durante a preparação documental.
 - **TIM-04** Git: repositório novo do zero, privado no GitHub até a publicação (RFC-07); poucas branches grandes, uma por fase, com merge nos marcos.
 - **TIM-05** Só o Bruno mexe no código, com Codex e Claude. João e Ana também defendem o projeto na banca e precisam conhecer as decisões.
 - **TIM-06** Comunicação concentrada nestas notas e nas conversas com a IA.
-- **TIM-07** As decisões moram nestas notas; quando o repositório novo existir, `docs/decisoes.md` as espelha, com os mesmos códigos.
-- **TIM-08** Git automático pelo Codex: ele cria a branch da fase (`fase/NN-nome`, NN = etapa do [[09 - Plano de trabalho]]); a cada passo do plano, com a suíte inteira verde, faz o commit e o push; no fim da fase, com o banco recriado (`down -v`) e a suíte verde, faz o merge na `main` com `--no-ff`, a tag `fase-NN` e o push. Mensagens em Conventional Commits em português (ex.: `feat(conta): abre conta para cliente existente`). Nunca: force push, amend, rebase, reset, commit com teste vermelho ou com `.env`. Se não ficar verde, para e relata, sem merge.
+- **TIM-07** As decisões moram nestas notas; quando o repositório novo existir, `docs/decisoes.md` as espelha, com os mesmos códigos. O relatório de auditoria fica só na pasta fonte, fora do score, sem ser requisito de execução.
+- **TIM-08** Git automático local pelo Codex: branch por fase (`fase/NN-nome`), commit por passo com suíte inteira verde e lint aprovado; no fim da fase, banco recriado, merge na main com --no-ff e tag fase-NN. Durante a produção não fazer push, pull ou fetch nem exigir acesso ao GitHub. Bruno enviará o projeto completo ao GitHub somente no final, quando pronto. Mensagens em Conventional Commits em português. Nunca force push, amend, rebase, reset, commit com teste vermelho ou .env. Se não ficar verde, parar e relatar, sem merge. Todos os planos podem ser copiados no início e registrados em um único commit local docs(plano): roteiros auditados; não há commit documental por fase.
 
 ---
 
@@ -117,7 +117,7 @@ As tabelas. O banco nasce inteiro (DAD-15); mudar depois exige `docker compose d
 
 **Fixas**
 
-- **DAD-01** Toda tabela tem `id` interno (inteiro) e `<entidade>_key` pública (UUID), única.
+- **DAD-01** Toda tabela tem `id` interno (inteiro); entidades públicas têm `<entidade>_key` (UUID), única. As nove exceções de tipos e eventos seguem DAD-18.
 - **DAD-04** Método: entidade, estado e relação, nesta ordem. "A modelagem decide onde o saldo mora."
 
 **Decididas**
@@ -136,6 +136,10 @@ As tabelas. O banco nasce inteiro (DAD-15); mudar depois exige `docker compose d
 - **DAD-16** A tarifa é um lançamento dentro da transferência: um pedido = uma operação + quatro lançamentos (quem envia −valor e −tarifa; quem recebe +valor; banco +tarifa), que somam zero.
 - **DAD-17** Toda operação guarda duas datas: `created_at` (data e hora reais) e `accounting_date` (a data contábil, do relógio do banco, DIA-01).
 
+- **DAD-18** Toda tabela tem id interno; account_type, account_status, block_reason, transaction_type, entry_type, category_status, piggy_rank, account_status_event e category_status_event não têm UUID público. As demais mantêm a key definida na fase 2.
+
+- **DAD-19** Manter BIGINT: máximo 9.223.372.036.854.775.807. Validar acumuladores antes da escrita, sob a trava da operação; estouro devolve NumericLimitExceeded, HTTP 422, QIT001032, e desfaz toda a operação, inclusive a virada. Valores individuais fora do intervalo continuam sendo erro de schema 400.
+
 ---
 
 ## 5. Cliente e conta — CLI
@@ -151,7 +155,7 @@ Quem é o cliente, quantas contas ele tem e por quais estados a conta passa.
 - **CLI-02** Dados do cliente, como no `sample_entity` do base: nome, CPF (válido e único), e-mail (único) e data de nascimento.
 - **CLI-03** Idade mínima de 18 anos (abaixo → 422, `QIT001006`), sem máximo; conferida só no cadastro.
 - **CLI-04** Uma conta não encerrada por cliente, aberta por rota própria; nasce `ACTIVE`, com saldo 0. Depois de encerrar, o cliente pode abrir outra, que começa do zero.
-- **CLI-05** O cliente não tem estado. A conta vai de `ACTIVE` a `BLOCKED` e volta, e de `ACTIVE` a `CLOSED` (final; a bloqueada precisa ser desbloqueada antes). Toda mudança grava um evento. Bloqueada: lê, mas não envia nem recebe dinheiro (409). Encerrada: só lê. Só o banco bloqueia e desbloqueia (rota interna, com motivo); só o dono encerra.
+- **CLI-05** O cliente não tem estado. A conta vai de `ACTIVE` a `BLOCKED` e volta, e de `ACTIVE` a `CLOSED` (final; a bloqueada precisa ser desbloqueada antes). Toda mudança grava um evento. Bloqueada: lê, mas não envia nem recebe dinheiro (409). Encerrada: só lê; a virada não a processa, e o ranque dela congela. Só o banco bloqueia e desbloqueia (rota interna, com motivo); só o dono encerra.
 - **CLI-06** O dono encerra a conta só com saldo e cofrinho zerados; depois disso, qualquer operação nela → 409.
 - **CLI-07** Conta bloqueada não muda nada na virada: o cofrinho rende, o recorde dá XP e o ranque segue.
 - **CLI-09** Conta bloqueada não mexe em dinheiro: depósito, saque, transferência enviada ou recebida, guardar e resgatar → 409; também não encerra. Leitura, pontos e categorias continuam liberados.
@@ -187,7 +191,7 @@ Depósito, saque, transferência, tarifa, concorrência, idempotência e extrato
 - **MOV-16** Detalhes do depósito: rota `POST /accounts/{key}/deposits`; corpo validado por schema (nome, CPF ou CNPJ formatado, valor inteiro ≥ 1 e chave de idempotência); dígito verificador errado → 422; quem depositou fica na tabela `deposits`; a resposta traz só a key da operação.
 - **MOV-17** O extrato mostra a outra ponta de cada lançamento (`counterparty`): na transferência, o nome do outro cliente e o CPF mascarado; no depósito, quem depositou; na tarifa, no rendimento e no prêmio, o banco; em guardar e resgatar, o cofrinho e a categoria; no saque, nada.
 - **MOV-18** Cada item do extrato mostra as duas datas: `created_at` (quando aconteceu) e `accounting_date` (em que dia do banco contou).
-- **MOV-19** Idempotência na prática: a operação guarda o `request_hash` (SHA-256 do corpo) e cada lançamento guarda o `balance_after`; a resposta repetida é remontada deles. Na corrida com a mesma chave, o `IntegrityError` do `UNIQUE` é tratado como repetição, nunca 500.
+- **MOV-19** Idempotência na prática: `request_hash` é SHA-256 do tipo da operação + conta da URL + corpo JSON normalizado; cada lançamento guarda `balance_after`, usado para remontar a resposta original. Reconsultar a chave após as travas, antes de validar saldo/estado; tratar a corrida do `UNIQUE` como repetição, nunca 500.
 
 ---
 
@@ -205,10 +209,10 @@ O produto de poupança da gamificação: um cofrinho por conta, dividido em cate
 - **COF-08** O resgate desconta IOF e IR, e o dono sempre vê o rendimento bruto e o líquido.
 - **COF-10** Guardar e resgatar só entre a conta e o próprio cofrinho; o resgate é livre, a qualquer hora, e o dinheiro volta para a conta.
 - **COF-11** Sem limite para guardar: o valor de cada ranque é o mínimo para alcançá-lo.
-- **COF-12** IR e IOF reais, por lote: IR regressivo pelo prazo do lote (22,5% até 180 dias, 20% até 360, 17,5% até 720, 15% acima) e IOF regressivo nos resgates com menos de 30 dias. O imposto é arredondado uma vez, no total do resgate, para cima.
+- **COF-12** IR e IOF reais, por lote: IR regressivo pelo prazo do lote (22,5% até 180 dias, 20% até 360, 17,5% até 720, 15% acima) e IOF regressivo nos resgates com menos de 30 dias. Cada imposto é agregado no total do resgate e arredondado para cima uma vez, com o limite do IR definido na COF-27.
 - **COF-13** O rendimento é contado em cada lote (para o IR por prazo); o dono vê só o total bruto e o líquido.
 - **COF-14** O cofrinho é uma conta (mesma tabela, tipo "cofrinho") ligada à conta principal; categorias e lotes ficam em tabelas próprias. Nasce com a conta, já com "economias".
-- **COF-15** O rendimento diário guarda a fração de centavo: taxa diária com 8 casas e resíduo em `NUMERIC` com 8 casas, em cada lote. Os centavos inteiros viram lançamento no dia; a fração fica para o dia seguinte.
+- **COF-15** O rendimento diário guarda a fração de centavo: taxa diária truncada na 8ª casa e resíduo em `NUMERIC` com 8 casas, em cada lote. Os centavos inteiros viram lançamento no dia; a fração fica para o dia seguinte.
 - **COF-16** Só rendem os dias com taxa do CDI publicada pelo Banco Central (dias úteis); dia sem taxa, sem rendimento.
 - **COF-17** A taxa de cada dia é o CDI real (série 12 do SGS do Banco Central), pedido pelo connector da ARQ-07.
 - **COF-18** Nome da categoria único entre as ativas da conta; sem limite de quantidade; sem renomear; excluída não volta (cria-se outra).
@@ -217,8 +221,14 @@ O produto de poupança da gamificação: um cofrinho por conta, dividido em cate
 - **COF-21** A taxa usada em cada virada não ganha tabela própria: tudo se reconstrói dos lançamentos, do arquivo do Mockserver e dos eventos de ranque.
 - **COF-22** Dinheiro guardado antes da virada rende o dia inteiro, a qualquer hora; resgatado antes da virada não rende o dia.
 - **COF-23** Cada lote guarda em colunas o principal e o rendimento que restam e o resíduo, atualizados sob a trava do cofrinho; os lançamentos do cofrinho são por categoria (um de rendimento por categoria por dia). Prova: soma dos lotes = saldo da categoria = soma dos lançamentos.
-- **COF-24** No resgate de parte de um lote, principal e rendimento saem na proporção do lote; o imposto incide só sobre a parte de rendimento.
+- **COF-24** No resgate de parte de um lote, principal e rendimento saem na proporção do lote; a parte de rendimento é arredondada para cima ao centavo, e o imposto incide só sobre ela.
 - **COF-25** `[banco]` O IOF e o IR do resgate são creditados na conta do banco, em lançamentos de tipo `IOF` e `IR`; o repasse ao governo fica fora (só na RFC).
+
+- **COF-26** No resgate total, zerar principal e rendimento inteiro e preservar o resíduo inferior a 1 centavo no lote original. O resíduo fica congelado: sem rendimento, transferência, resgate ou inclusão no saldo disponível. Novo aporte cria outro lote; o lote zerado permanece no histórico.
+
+- **COF-27** Calcular IOF exato por lote e IR sobre o rendimento menos esse IOF exato. Somar cada imposto entre os lotes do resgate e arredondar cada soma para cima uma única vez. Limitar o IR inteiro ao rendimento total menos o IOF inteiro; nunca tributar principal. Usar aritmética exata, sem float.
+
+- **COF-28** GET da conta expõe piggy_bank_gross_yield, piggy_bank_net_yield e yield_accounting_date; GET da categoria expõe gross_yield, net_yield e yield_accounting_date. Valores monetários em centavos; rendimento bruto inclui somente rendimento inteiro disponível, sem principal nem resíduo. O líquido simula resgate total na data contábil atual com COF-27. Na conta, somar as estimativas calculadas separadamente por categoria, pois o resgate real é por categoria.
 
 ---
 
@@ -237,17 +247,19 @@ XP, nível, pontos, benefícios e ranque. Tudo é da conta (GAM-01).
 - **GAM-11** Um ponto em chance vale o mesmo que um em tarifa, calibrado para transferências de até R$ 100.
 - **GAM-12** O ranque (bronze, prata, ouro, platina, diamante) é dado só pelo saldo do cofrinho.
 - **GAM-13** Mínimo de cada ranque: padrão R$ 0, bronze R$ 2 mil, prata R$ 5 mil, ouro R$ 10 mil, platina R$ 30 mil e diamante R$ 50 mil.
-- **GAM-14** Carência: o ranque vale enquanto o cofrinho tiver o mínimo, mais 30 dias contados da queda. Voltou ao mínimo nesses 30 dias, mantém; passados os 30, cai direto para o ranque que o saldo dá. Durante a carência, rende no ranque.
+- **GAM-14** Carência: o ranque vale enquanto o cofrinho tiver o mínimo, mais 30 dias contados da queda: a carência vai até o dia da queda + 30 (`grace_until`). Voltou ao mínimo nesses 30 dias, mantém; se não voltou, na virada que fecha o dia `grace_until` cai direto para o ranque que o saldo dá. Durante a carência, rende no ranque.
 - **GAM-15** 10 níveis e 1 ponto por nível (10 pontos no máximo). Todos os números da gamificação são constantes ajustáveis.
 - **GAM-16** Fórmulas de XP: cofrinho = n XP por R$ 1 de novo recorde; transferência = (x/4)·log(n·10), com x = valor em reais. n = próximo nível (nível 0 → 1; nível 9 → 10; no nível 10, n continua 10 e o XP segue sem teto).
 - **GAM-17** Transferência dá XP para quem envia e para quem recebe, cada um com o seu n. Depósito, saque, guardar e resgatar não dão XP de movimentação.
-- **GAM-18** x = centavos ÷ 100 (R$ 12,34 → 12,34); XP sempre inteiro, truncado; log na base 10.
+- **GAM-18** x = centavos ÷ 100 (R$ 12,34 → 12,34); log na base 10; XP inteiro, truncado uma única vez no fim da operação, depois de todas as subidas de nível. A fração de XP não é guardada para outra operação.
 - **GAM-19** O ranque sobe na hora, ao guardar, e a virada também confere a subida; queda e carência só na virada. O rendimento do dia usa o ranque do início do dia. O XP de recorde sai na hora (ao guardar) e na virada (pelo rendimento).
 - **GAM-21** Pontos na API: "aplicar +Y" (soma Y pontos livres a um benefício; faltou ponto livre → 422) e "zerar tudo" (todos voltam a livres). Não existe tirar um ponto só. Sem chave de idempotência.
 - **GAM-22** Concorre ao sorteio a transferência com valor até R$ 100,00 (10.000 centavos), sem contar a tarifa.
 - **GAM-23** O prêmio do sorteio não dá XP.
-- **GAM-24** Cada nível custa 1.000 × n² de XP (0→1 = 1.000 … 9→10 = 100.000; 385.000 no total); ao subir, o XP zera e a sobra passa adiante. Se subir no meio de uma operação, o resto do valor rende com o n novo.
+- **GAM-24** Cada nível custa 1.000 × n² de XP (0→1 = 1.000 … 9→10 = 100.000; 385.000 no total); ao subir, o XP zera e a sobra passa adiante. No meio da operação, a parte restante usa o n novo; divisão em Fraction, log10 em Decimal com 50 dígitos; truncar XP só no fim (GAM-18).
 - **GAM-25** O XP do recorde conta reais inteiros: XP = n × (reais inteiros do novo saldo − reais inteiros do recorde). Os centavos do rendimento não se perdem; viram XP quando completam um real.
+
+- **GAM-26** Quando uma subida encerra carência, gravar GRACE_END com o ranque anterior, depois UP com o novo ranque, na mesma transação e data contábil; limpar grace_until. Sem carência, gravar apenas UP. Sem subida, não criar esses eventos por essa rotina.
 
 ---
 
@@ -283,12 +295,14 @@ Rotas, formato das respostas e erros.
 - **API-11** Status de erro: 400 formato; 404 não existe ou não é seu; 409 duplicado ou estado que não permite; 422 regra de negócio. Além desses: 403 token interno, 429 tentativas demais e 503 dependência fora do ar ou lenta.
 - **API-12** Catálogo de erros: cada falha com situação, status e código próprio, a partir de `QIT001008`; fecha na etapa 3, com o contrato.
 - **API-13** Rotas internas (virada do dia, bloquear e desbloquear conta) ficam sob `/internal`, com token próprio (PRD-07).
-- **API-14** Rota própria para consultar a gamificação: XP, nível e XP que falta; pontos livres, em tarifa e em chance; tarifa e chance atuais; ranque, % do CDI que rende, recorde do cofrinho e fim da carência (se houver).
+- **API-14** Rota própria para consultar XP, nível e XP que falta; pontos livres, em tarifa e em chance; tarifa e chance atuais; ranque atual, seu percentual do CDI (`cdi_percent`, confirmado em 08/10), recorde do cofrinho e fim da carência. O rendimento efetivo do dia usa `yield_rank_id` do início do dia (GAM-19).
 - **API-15** Excluir categoria é `DELETE`, que só muda o estado e grava o evento. Depois: a consulta pela key devolve 200 com `status: deleted`, a lista mostra só as ativas e guardar nela → 409.
 
 - **API-18** Valor que não é inteiro ≥ 1 centavo (float, texto, zero, negativo) → 400 `QIT000001` pelo schema, em todas as rotas de dinheiro.
 
 *API-04 (`INTERNAL-TOKEN`), API-09 (dono pelo token da conta), API-16 (como o token da conta funciona) e API-17 (quem consulta o cliente) estão em [[#11. Segurança]].*
+
+- **API-19** Rejeitar corpo e parâmetros de query não previstos nas rotas com HTTP 400 e o erro de schema QIT000001 existente. Rota sem corpo aceita apenas corpo ausente/vazio; até {} é entrada inesperada. Rota sem query rejeita qualquer parâmetro. Preservar a precedência de autenticação e os erros 404/405 de rota/método inexistentes.
 
 ---
 
@@ -319,11 +333,13 @@ Tudo o que protege a API, venha de que tópico vier. Os códigos mantêm o prefi
 
 - **PRD-10** Barreira contra chute de token: 10 erros de token em 15 minutos (por conta + IP no token da conta; por IP nos internos) → 429, sem rodar a regra. Limites em variável de ambiente.
 - **PRD-11** Sobrecarga e DDoS ficam fora do código, só na RFC (balanceador, auto scaling, API Gateway, WAF, CDN).
-- **CLI-08** Bloqueio automático: a 11ª transferência enviada no mesmo dia contábil é recusada (422) e a conta é bloqueada na mesma requisição, com motivo `SUSPICIOUS_ACTIVITY` e origem automática.
+- **CLI-08** Bloqueio automático: a 11ª transferência enviada no mesmo dia contábil é recusada (422), com bloqueio gravado na mesma requisição, motivo `SUSPICIOUS_ACTIVITY` e origem automática; contagem recomeça no desbloqueio; limite configurável por `DAILY_TRANSFER_LIMIT`, padrão 10 (explicadas e diário de 07/10).
 
 **Também protegem** (decisões de outros tópicos com efeito de segurança): API-03 (schema fechado na entrada) · API-08 (checagem de dono igual em toda rota) · API-10 (resposta sem campo interno) · API-13 (rotas internas separadas) · MOV-04 (no máximo 100 itens por página) · MOV-12 (duplo clique não debita duas vezes) · MOV-15 e MOV-16 (quem deposita; o depósito não devolve saldo) · CLI-05 (só o banco bloqueia) · DAD-11 (movimentação não se altera) · ARQ-09 (`/docs` desligada) · PRD-03 e PRD-08 (timeouts) · PRD-06 (log de toda requisição) · TIM-04 (repositório privado até a entrega).
 
 Também de segurança, em ARQ: ARQ-12 (Banco Central só no download, nunca na execução). Nada de segurança está em aberto.
+
+- **PRD-15** Em GET /customers/{customer_key}, resolver a conta vinculada antes de aplicar a barreira ACCOUNT e compartilhar o contador conta + IP das rotas /accounts. Sem conta válida, contar falhas por customer_key normalizada + IP, na mesma janela e limite da PRD-10: 404 antes do bloqueio e 429 durante o bloqueio. Nunca registrar o token.
 
 ---
 
@@ -364,7 +380,9 @@ A lista de casos está em [[09 - Plano de trabalho#Testes previstos]].
 
 - **TST-05** Unitários + black box: as contas puras (tarifa, XP, nível, rendimento, IR/IOF, sorteio) têm teste unitário, numa pasta separada e escrito primeiro; toda regra também tem teste black box.
 - **TST-06** Sorteio com gerador injetável: o unitário usa um gerador falso; o black box confere o que vale nos dois resultados.
-- **TST-08** Provas extras: duas transferências ao mesmo tempo quando o saldo só cobre uma; a mesma chave de idempotência duas vezes; A paga B e B paga A ao mesmo tempo; reconciliação (a soma do extrato bate com o saldo); nenhum 5xx na suíte. Se o tempo apertar, só as duas primeiras.
+- **TST-08** Provas extras: saldo para só uma transferência simultânea; repetição simultânea da mesma chave; A paga B e B paga A; reconciliação extrato/saldo; nenhum 5xx inesperado. Os 503 previstos de CDI/timeout são falhas testadas, com código e ausência de escrita conferidos. Se o tempo apertar, priorizar as duas primeiras.
+
+- **TST-09** Autorizar testes isolados em tests/unit/infrastructure, importando apenas os módulos de infraestrutura sob teste e dependências controladas. Usar relógio, conector ou repository controlados para provar expiração e timeout sem esperas reais. Não substituir os black box HTTP; a corrida de encerramento/virada exige também prova reproduzível com PostgreSQL real na fase 11.
 
 ---
 
@@ -383,6 +401,25 @@ O que se entrega, como e quando.
 
 - **RFC-05** A RFC é escrita em Markdown, com diagrama em Mermaid, e exportada para PDF, como a da biblioteca; testar a exportação cedo.
 - **RFC-07** Repositório público até 11/10 à noite, depois do teste em Linux limpo; PDF e link entregues até 12/10, às 10h. O Bruno cuida do repositório.
+
+---
+
+## 15. Arredondamento — ARR
+
+Regras de arredondamento, truncamento e precisão reunidas a pedido do Bruno em 08/10/2026. Os códigos ARR consolidam regras já decididas: os códigos originais continuam válidos e o comportamento não muda. Ao alterar uma regra, atualizar também seu correspondente ARR e a explicação nos dois tópicos.
+
+**Consolidadas — regras já contadas nos tópicos originais**
+
+- **ARR-01** Unidade e entrada: dinheiro em centavos inteiros (`BIGINT`/JSON), sem `float`; entrada monetária fracionária não é arredondada nem convertida, mas recusada com 400 `QIT000001`. Percentuais e frações de cálculo usam inteiros, `Decimal` ou `Fraction`, conforme a regra. Origens: R6, DAD-08 e API-18.
+- **ARR-02** Tarifa: `ceil(amount × (10 − fee_points) / 1000)`, em centavos, com 0 a 10 pontos; calcular só com inteiros e arredondar para cima uma vez por transferência. Tarifa zero não gera lançamento. Origens: MOV-10 e GAM-09.
+- **ARR-03** Taxa diária: CDI diário percentual × percentual do ranque ÷ 10.000, em `Decimal` com precisão 50; truncar a fração resultante na 8ª casa decimal, sem arredondar para a mais próxima nem para cima. Origens: COF-02 e COF-15.
+- **ARR-04** Rendimento diário: por lote, calcular `(principal_remaining + yield_remaining) × taxa_truncada + resíduo_anterior`; creditar `floor(resultado)` centavos e guardar o resto com 8 casas no lote. Separar inteiro/resíduo antes de somar os créditos por categoria; não descartar a fração enquanto o lote tem dinheiro. Origens: COF-13 e COF-15.
+- **ARR-05** Resgate proporcional: para bruto `a`, principal `p` e rendimento `y` do lote, rendimento resgatado = `ceil(a × y / (p + y))`; principal resgatado = `a − rendimento_resgatado`. Aplicar por lote, só com inteiros; o resíduo fracionário não entra no bruto nem muda no resgate parcial. Origem: COF-24.
+- **ARR-06** Impostos: calcular IOF exato por lote e IR sobre rendimento menos esse IOF exato; somar cada imposto entre os lotes do resgate e aplicar `ceil` uma vez a cada soma. IR final = `min(ceil(IR_exato_total), rendimento_total − IOF_inteiro)`. Não arredondar IOF antes da base do IR nem tributar principal; usar `Decimal` com precisão 50, sem `float`. Origens: COF-12 e COF-27.
+- **ARR-07** Resíduo no resgate total: zerar principal e rendimento inteiro, preservando a fração inferior a 1 centavo no lote original; ela fica congelada, indisponível e sem rendimento. Não arredondar para crédito nem transferir a fração; novo aporte cria outro lote independente. Origem: COF-26.
+- **ARR-08** Consulta de rendimento: bruto inclui somente rendimento inteiro disponível, sem principal/resíduo; líquido aplica ARR-06 ao resgate total da categoria na data contábil atual. Na conta, somar os resultados já calculados separadamente por categoria, sem recalcular impostos sobre o bruto agregado. Origem: COF-28.
+- **ARR-09** XP: usar `x = centavos / 100` sem truncar os reais; conservar o valor restante entre subidas de nível em `Fraction`, aproximando somente `log10` em `Decimal` com 50 dígitos. Truncar o XP para inteiro uma única vez, no fim da operação, depois de todas as subidas; descartar a fração final, sem levá-la à próxima operação. Origens: GAM-18 e GAM-24.
+- **ARR-10** Recorde do cofrinho: reais que geram XP = `max(0, floor(novo_saldo_centavos / 100) − floor(recorde_centavos / 100))`; guardar o recorde completo em centavos. Truncar cada saldo separadamente, nunca a diferença em centavos; aplicar o XP por nível conforme ARR-09. Origem: GAM-25.
 
 ---
 
