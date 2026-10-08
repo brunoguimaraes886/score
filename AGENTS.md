@@ -177,6 +177,10 @@ Passo cujo campo **Testes** diz "prova": o teste confere o que já existe. Escre
 
 Todos os roteiros podem entrar juntos antes da implementação, no commit local `docs(plano): roteiros auditados`. Verifique sua presença no histórico completo; não exija commit documental ou cópia antes de cada fase.
 
+**Preparação documental antes da primeira implementação:** se o commit `docs(plano): roteiros auditados` ainda não existir e o `git status --short` mostrar somente roteiros auditados não rastreados em `docs/plano/`, registre esses arquivos no commit documental previsto, na `main`, antes de conferir o começo do passo. Use `git add --` com cada caminho explícito e confira o conteúdo staged e a mensagem do commit. Essa preparação é autorizada e não exige confirmação; a saída não vazia nessa situação não é condição de parada. Se houver qualquer outra alteração, aplique as condições de parada normalmente. Não modifique os roteiros.
+
+Correções de `AGENTS.md` expressamente solicitadas pelo Bruno podem ser feitas e registradas em commit local próprio antes dessa preparação; não fazem parte dos arquivos de um passo de implementação. Fora dessa autorização expressa, permanece a proibição de editar este arquivo.
+
 **TIM-04, TIM-08 — git automático.** Uma branch por fase, `fase/NN-<nome>` (o valor do campo **Branch**); um commit por passo; merge na `main` só no `Passo N.fim`; sem pull request.
 
 A mensagem de commit e a de merge são as do plano, exatas, numa linha (Conventional Commits em português). Nenhuma linha a mais: nem `Co-Authored-By`, nem assinatura de ferramenta.
