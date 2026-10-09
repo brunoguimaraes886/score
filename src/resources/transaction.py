@@ -35,3 +35,13 @@ class TransactionResource:
             content=jsonable_encoder(transaction),
             status_code=http_status.HTTP_201_CREATED,
         )
+
+    @SchemaHandler.validate("post_transfers.json")
+    def on_post_transfer(self, account_key: str, payload: dict, request: Request) -> JSONResponse:
+        controller = TransactionController()
+        transaction = controller.transfer(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER), payload)
+
+        return JSONResponse(
+            content=jsonable_encoder(transaction),
+            status_code=http_status.HTTP_201_CREATED,
+        )
