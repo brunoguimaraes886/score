@@ -87,3 +87,8 @@ class GamificationRepository:
     def update_piggy_record(self, account: Account, piggy_record: int) -> None:
         """Escreve o recorde do cofrinho, em centavos (GAM-04)."""
         account.piggy_record = piggy_record
+
+    def update_rank(self, account: Account, rank_enumerator: str, grace_until: date) -> None:
+        """Escreve o ranque atual da conta e o fim da carência; grace_until nulo fora da carência (GAM-12, GAM-14)."""
+        account.rank = self.session.query(PiggyRank).filter(PiggyRank.enumerator == rank_enumerator).one()
+        account.grace_until = grace_until

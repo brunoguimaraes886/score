@@ -1,10 +1,10 @@
 from datetime import date
 
-from calculations import XpGain, gain_record_xp, gain_transfer_xp, record_whole_reais
+from calculations import RANK_ORDER, XpGain, gain_record_xp, gain_transfer_xp, rank_for_balance, record_whole_reais
 from controllers.base_controller import BaseController
 from dtos import GamificationDTO
 from errors import AccountNotActive, NotEnoughFreePoints
-from models import Account, AccountStatus, PointsEvent, Transaction, XpEvent
+from models import Account, AccountStatus, PointsEvent, RankEvent, Transaction, XpEvent
 from repositories import AccountRepository, GamificationRepository
 
 
@@ -145,6 +145,31 @@ class GamificationController(BaseController):
         self._apply_xp_gain(account, xp_gain, XpEvent.PIGGY_RECORD, transaction, accounting_date)
 
         return xp_gain
+
+    def raise_rank(self, account: Account, piggy_bank: Account, accounting_date: date) -> bool:
+        """Sobe o ranque da conta se o saldo do cofrinho alcança um ranque maior que o atual (GAM-12, GAM-13, GAM-19).
+
+        1. o ranque que o saldo dá (rank_for_balance) é maior que o atual:
+           se não é, nada muda e a resposta é False;
+        2. o ranque novo vale na hora, a carência acaba (grace_until nulo) e
+           o evento UP é gravado com o ranque novo.
+
+        O ranque que rende (yield_rank) não muda aqui: só a virada o grava
+        (GAM-19). Quem chama (guardar, passo 7.4; a virada, passo 7.14) já
+        travou a conta e o cofrinho e faz o commit.
+        """
+        balance_rank = rank_for_balance(piggy_bank.balance)
+
+        if RANK_ORDER.index(balance_rank) <= RANK_ORDER.index(account.rank.enumerator):
+            return False
+
+        if account.grace_until is not None:
+            self.gamification_repository.create_rank_event(account, account.rank.enumerator, RankEvent.GRACE_END, accounting_date)
+
+        self.gamification_repository.update_rank(account, balance_rank, None)
+        self.gamification_repository.create_rank_event(account, balance_rank, RankEvent.UP, accounting_date)
+
+        return True
 
     def _apply_xp_gain(self, account: Account, xp_gain: XpGain, source: str, transaction: Transaction, accounting_date: date) -> None:
         """Grava o ganho: um level_event por nível novo, o xp_event e os valores novos da conta (DAD-14).
