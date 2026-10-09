@@ -39,6 +39,7 @@ class EntryRepository:
         entry.account_id = account.id
         entry.entry_type = self.session.query(EntryType).filter(EntryType.enumerator == entry_type_enumerator).one()
         entry.amount = amount
+        entry.created_at = transaction.created_at
 
         if category is not None:
             entry.category_id = category.id
