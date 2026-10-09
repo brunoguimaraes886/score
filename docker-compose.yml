@@ -46,6 +46,7 @@ services:
       # rodando um comando. Passou, a API responde 503.
       DB_LOCK_TIMEOUT_MS: ${DB_LOCK_TIMEOUT_MS:-5000}
       DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-5000}
+      DAILY_TRANSFER_LIMIT: ${DAILY_TRANSFER_LIMIT:-10}
       # A API de boletos (assunto do sabado 4). Variavel que nao esta
       # nesta lista NAO CHEGA no container: o compose repassa o que
       # esta escrito aqui, e mais nada. Sem estas tres linhas, mexer

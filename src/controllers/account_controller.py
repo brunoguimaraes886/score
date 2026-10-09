@@ -5,6 +5,7 @@ from dtos import AccountDTO
 from errors import (
     AccountNotActive,
     AccountNotBlocked,
+    AccountNotEmpty,
     AccountNotFound,
     CustomerAlreadyHasAccount,
     CustomerNotFound,
@@ -66,10 +67,25 @@ class AccountController(BaseController):
         self.session.commit()
 
     def close_account(self, account_key: str, account_token: str) -> None:
+        """O dono encerra a conta (CLI-05, CLI-06). As regras, nesta ordem:
+
+        1. a conta é do dono do token (404 QIT001010, R8);
+        2. trava a linha da conta (o estado e o saldo são relidos depois da
+           trava: um depósito ao mesmo tempo espera ou é esperado);
+        3. a conta está ACTIVE (409 QIT001011): bloqueada precisa ser
+           desbloqueada antes, e encerrada é final;
+        4. o saldo é zero (409 QIT001012, CLI-06).
+
+        O cofrinho zerado entra no passo 7.15, entre a regra 4 e a gravação.
+        Depois: estado CLOSED e o evento, sem origem e sem motivo (quem muda
+        é o dono).
+        """
         account = self.get_owned_account(account_key, account_token)
         account = self.account_repository.lock_accounts([account])[0]
         if account.status.enumerator != AccountStatus.ACTIVE:
             raise AccountNotActive(account_key, account.status.enumerator)
+        if account.balance != 0:
+            raise AccountNotEmpty(account_key)
         self.account_repository.change_status(account, AccountStatus.CLOSED)
         self.session.commit()
 

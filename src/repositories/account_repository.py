@@ -1,6 +1,8 @@
 from datetime import datetime
 from uuid import uuid4
 
+from sqlalchemy import func
+
 from database import Context
 from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Customer, PiggyRank
 
@@ -113,6 +115,21 @@ class AccountRepository:
             block_reason = self._get_fixed_type(BlockReason, block_reason_enumerator)
         account.status = status
         self._add_status_event(account, status, source, block_reason)
+
+    def get_active_since(self, account: Account) -> datetime:
+        """O created_at do último evento ACTIVE da conta: a abertura ou o último desbloqueio (CLI-08).
+
+        É a partir dele que o limite diário de transferências conta. O
+        created_at vem do NOW() do banco, o mesmo relógio do created_at das
+        operações (TransactionRepository.count_transfers_sent).
+        """
+        return (
+            self.session.query(func.max(AccountStatusEvent.created_at))
+            .select_from(AccountStatusEvent)
+            .join(AccountStatus, AccountStatus.id == AccountStatusEvent.status_id)
+            .filter(AccountStatusEvent.account_id == account.id, AccountStatus.enumerator == AccountStatus.ACTIVE)
+            .scalar()
+        )
 
     def _add_status_event(self, account: Account, status: AccountStatus, source: str, block_reason: BlockReason) -> None:
         status_event = AccountStatusEvent()
