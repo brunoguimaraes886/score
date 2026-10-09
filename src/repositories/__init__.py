@@ -6,3 +6,4 @@ from repositories.transaction_repository import TransactionRepository
 from repositories.entry_repository import EntryRepository
 from repositories.deposit_repository import DepositRepository
 from repositories.bank_clock_repository import BankClockRepository
+from repositories.gamification_repository import GamificationRepository
