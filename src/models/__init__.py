@@ -14,3 +14,7 @@ from models.transaction import Transaction
 from models.deposit import Deposit
 from models.category import Category
 from models.category_status_event import CategoryStatusEvent
+from models.entry import Entry
+from models.lot import Lot
+from models.xp_event import XpEvent
+from models.level_event import LevelEvent
