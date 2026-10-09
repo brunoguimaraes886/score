@@ -32,9 +32,20 @@ services:
       DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
       APP_ENV: ${APP_ENV:-local}
       SERVICE_NAME: ${SERVICE_NAME:-bootcamp-api}
-      # A senha que protege os endpoints internos. O padrao vale pra
+      # A senha que protege os endpoints internos da API. O padrao vale pra
       # estudar; num sistema de verdade, isso nunca teria valor padrao.
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
+      # O segundo token das rotas /internal (PRD-13). Mesmo aviso do de
+      # cima sobre o valor padrao.
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-default_admin_token}
+      # Barreira contra chute de token (PRD-10): quantos erros de token do
+      # mesmo IP, dentro de quantos minutos, antes do 429.
+      AUTH_FAILURE_LIMIT: ${AUTH_FAILURE_LIMIT:-10}
+      AUTH_FAILURE_WINDOW_MINUTES: ${AUTH_FAILURE_WINDOW_MINUTES:-15}
+      # Timeout do banco (PRD-08), em milissegundos: esperando trava e
+      # rodando um comando. Passou, a API responde 503.
+      DB_LOCK_TIMEOUT_MS: ${DB_LOCK_TIMEOUT_MS:-5000}
+      DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-5000}
       # A API de boletos (assunto do sabado 4). Variavel que nao esta
       # nesta lista NAO CHEGA no container: o compose repassa o que
       # esta escrito aqui, e mais nada. Sem estas tres linhas, mexer
@@ -77,4 +88,3 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-

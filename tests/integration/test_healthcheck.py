@@ -1,4 +1,4 @@
-from tests.utils import INTERNAL_TOKEN
+from tests.utils import INTERNAL_TOKEN, DbUtils
 from tests.utils.requisition import ClientRequisition
 
 
@@ -25,6 +25,8 @@ class TestHealthCheck:
         assert response.response_status == 204
 
     def test_no_token(self):
+        DbUtils.rollback()
+
         response = ClientRequisition.send("PUT", "/sample")
         assert response.response_status == 403
         assert response.response_json["code"] == "QIT000002"
@@ -55,6 +57,8 @@ class TestHealthCheck:
         verdade: JSON é UTF-8, o acento cabe nele, e a API não tem por que
         raspar cedilha e til de um texto escrito pra brasileiro ler.
         """
+        DbUtils.rollback()
+
         response = ClientRequisition.send("PUT", "/sample")
         assert response.response_status == 403
         assert response.response_json["code"] == "QIT000002"

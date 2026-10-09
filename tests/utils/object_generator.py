@@ -1,25 +1,48 @@
-from tests.utils.requisition import BaseConnectorResponse
 from tests.utils.payload_generator import PayloadGenerator
 from tests.utils.request_generator import RequestGenerator
 
 
 class ObjectGenerator:
-    @staticmethod
-    def create_sample_entity(hello: str = None) -> BaseConnectorResponse:
+    """Monta os dados de um teste pelas rotas, como um cliente faria (TST-01).
 
-        sample_entity_payload = PayloadGenerator.create_sample_entity_payload(hello=hello)
-
-        status, response = RequestGenerator.POST_sample_entity(sample_entity_payload)
-        assert status == 201
-
-        return response
+    Cada função confere o status de sucesso da rota que chama: se a
+    montagem falha, o teste para ali, com a resposta na mensagem do assert.
+    """
 
     @staticmethod
-    def update_sample_entity(sample_entity_key, new_status: str = None) -> BaseConnectorResponse:
+    def create_customer(name: str = None, document_number: str = None, email: str = None, birthdate: str = None) -> str:
+        """Cadastra um cliente e devolve a customer_key."""
+        payload = PayloadGenerator.customer(name=name, document_number=document_number, email=email, birthdate=birthdate)
 
-        sample_entity_payload = PayloadGenerator.create_new_status_payload(new_status)
+        status, response = RequestGenerator.POST_customer(payload)
+        assert status == 201, response
 
-        status, response = RequestGenerator.PUT_sample_entity(sample_entity_key, sample_entity_payload)
-        assert status == 202
+        return response["customer_key"]
 
-        return response
+    @staticmethod
+    def create_account(customer_key: str = None) -> dict:
+        """Abre uma conta e devolve customer_key, account_key e account_token.
+
+        Sem `customer_key`, cadastra um cliente novo antes.
+        """
+        if customer_key is None:
+            customer_key = ObjectGenerator.create_customer()
+
+        status, response = RequestGenerator.POST_account(customer_key)
+        assert status == 201, response
+
+        return {
+            "customer_key": customer_key,
+            "account_key": response["account_key"],
+            "account_token": response["account_token"],
+        }
+
+    @staticmethod
+    def create_funded_account(amount: int = 100000) -> dict:
+        """Abre uma conta, deposita `amount` centavos nela e devolve o mesmo dicionário do create_account."""
+        account = ObjectGenerator.create_account()
+
+        status, response = RequestGenerator.POST_deposit(account["account_key"], PayloadGenerator.deposit(amount=amount))
+        assert status == 201, response
+
+        return account

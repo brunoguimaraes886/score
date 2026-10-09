@@ -98,10 +98,23 @@ from typing import Optional
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants import DATABASE_URL
+from constants import DATABASE_URL, DB_LOCK_TIMEOUT_MS, DB_STATEMENT_TIMEOUT_MS
 
 
-engine = create_engine(DATABASE_URL, pool_size=5, pool_recycle=600, pool_pre_ping=True)
+# PRD-08: toda conexão nasce com lock_timeout e statement_timeout, em
+# milissegundos. Passou do tempo, o PostgreSQL desiste do comando, a
+# transação é desfeita e a API responde 503 QIT000503
+# (src/errors/handlers.py).
+DB_TIMEOUT_OPTIONS = f"-c lock_timeout={DB_LOCK_TIMEOUT_MS} -c statement_timeout={DB_STATEMENT_TIMEOUT_MS}"
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=5,
+    pool_recycle=600,
+    pool_pre_ping=True,
+    connect_args={"options": DB_TIMEOUT_OPTIONS},
+    hide_parameters=True,
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
 
