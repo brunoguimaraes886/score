@@ -5,6 +5,7 @@ from errors import register_error_handlers
 from errors.base_error import error_verification
 from middlewares import (
     register_admin_token_middleware,
+    register_auth_barrier_middleware,
     register_internal_token_middleware,
     register_request_context_middleware,
     register_request_log_writer_middleware,
@@ -32,16 +33,20 @@ def create_app() -> FastAPI:
     #     request_context      nome da requisição e RequestState
     #     request_logger       ENTROU / SAIU na saída padrão
     #     request_log_writer   uma linha em request_log (PRD-06)
+    #     auth_barrier         429 para o IP que errou token demais (PRD-10)
     #     internal_token       403 sem o INTERNAL-TOKEN certo (API-04)
     #     admin_token          403 em /internal sem o ADMIN-TOKEN (PRD-13)
     #     session_manager      sessão de banco; o mais interno de todos
     #
-    # A ordem inteira, com os porquês: docs/plano/PLANO-00-indice.md,
-    # seção "Middlewares".
+    # O log vem antes da barreira e dos tokens para gravar também o 403 e
+    # o 429; a barreira vem antes dos tokens para responder sem conferir
+    # token nenhum. A ordem inteira, com os porquês:
+    # docs/plano/PLANO-00-indice.md, seção "Middlewares".
     # ────────────────────────────────────────────────────────────────
     register_session_manager_middleware(application)
     register_admin_token_middleware(application)
     register_internal_token_middleware(application)
+    register_auth_barrier_middleware(application)
     register_request_log_writer_middleware(application)
     register_request_logger_middleware(application)
     register_request_context_middleware(application)
