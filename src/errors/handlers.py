@@ -12,6 +12,7 @@ from errors.base_error import (
     NotFoundResource,
 )
 from utils.logger import get_logger
+from utils.request_context import get_request_state
 
 
 logger = get_logger(__name__)
@@ -20,9 +21,14 @@ logger = get_logger(__name__)
 def qi_exception_to_response(exception: QIException) -> JSONResponse:
     """Traduz um erro nosso para a resposta JSON que o cliente recebe.
 
-    Este é o único lugar do projeto que sabe como um erro vira HTTP.
-    Trocar de framework significa reescrever esta função — e mais nada.
+    Este é o único lugar do projeto que sabe como um erro vira HTTP. Ele
+    também anota o código do erro no estado da requisição: é de lá que o
+    middleware request_log_writer o grava em request_log (PRD-14).
     """
+    request_state = get_request_state()
+    if request_state is not None:
+        request_state.error_code = exception.code
+
     body = {
         "title": exception.title,
         "description": exception.description,
@@ -76,20 +82,10 @@ def register_error_handlers(application: FastAPI) -> None:
         description = describe_validation_error(first_error)
         origin = first_error.get("loc", [""])[0]
 
-        # Este ramo NAO e alcancado hoje, e vale saber por que — e a
-        # unica pista de que existem duas validacoes neste projeto, nao
-        # uma.
-        #
-        # Quem julga a query string aqui e o JSON Schema, antes do
-        # FastAPI (veja utils/schema_handler.py). Um ?page=-3 morre la,
-        # com 400 QIT000001 — nunca chega a virar RequestValidationError.
-        # E os parametros de endereco sao todos `str`, que nao tem como
-        # falhar validacao.
-        #
-        # O ramo fica de pe para o dia em que alguma rota declarar um
-        # parametro tipado (page: int) e passar a depender do FastAPI
-        # para isso. O QIT000010 que o cliente ve hoje vem de outro
-        # lugar: do controller, quando birthdate_from > birthdate_to.
+        # Hoje este ramo não é alcançado: corpo e query string são julgados
+        # pelo JSON Schema (utils/schema_handler.py), e os parâmetros de
+        # caminho são todos `str`. Ele fica para a rota que declarar um
+        # parâmetro tipado.
         if origin in ("query", "path"):
             return qi_exception_to_response(InvalidParameter(description))
 
