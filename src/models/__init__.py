@@ -10,3 +10,7 @@ from models.bank_clock import BankClock
 from models.request_log import RequestLog
 from models.account import Account
 from models.account_status_event import AccountStatusEvent
+from models.transaction import Transaction
+from models.deposit import Deposit
+from models.category import Category
+from models.category_status_event import CategoryStatusEvent
