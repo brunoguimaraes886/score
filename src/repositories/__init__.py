@@ -1,1 +1,4 @@
 from repositories.request_log_repository import RequestLogRepository
+from repositories.customer_repository import CustomerRepository
+from repositories.account_repository import AccountRepository
+from repositories.category_repository import CategoryRepository

@@ -12,7 +12,7 @@ from middlewares import (
     register_request_logger_middleware,
     register_session_manager_middleware,
 )
-from resources import HealthCheckResource
+from resources import AccountResource, CustomerResource, HealthCheckResource, InternalResource
 from utils.logger import setup_logging
 
 
@@ -56,6 +56,9 @@ def create_app() -> FastAPI:
     # de dentro do resource (API-02).
     # ────────────────────────────────────────────────────────────────
     health_check_resource = HealthCheckResource()
+    customer_resource = CustomerResource()
+    account_resource = AccountResource()
+    internal_resource = InternalResource()
 
     application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
     application.add_api_route(
@@ -63,6 +66,19 @@ def create_app() -> FastAPI:
         health_check_resource.on_get_health_check,
         methods=["GET"]
     )
+
+    # Cliente
+    application.add_api_route("/customers", customer_resource.on_post, methods=["POST"])
+    application.add_api_route("/customers/{customer_key}", customer_resource.on_get_by_key, methods=["GET"])
+
+    # Conta
+    application.add_api_route("/customers/{customer_key}/accounts", account_resource.on_post_account, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}", account_resource.on_get_by_key, methods=["GET"])
+    application.add_api_route("/accounts/{account_key}", account_resource.on_delete_by_key, methods=["DELETE"])
+
+    # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
+    application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])
+    application.add_api_route("/internal/accounts/{account_key}/unblocks", internal_resource.on_post_unblock, methods=["POST"])
 
     register_error_handlers(application)
 
