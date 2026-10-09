@@ -71,6 +71,7 @@ def create_app() -> FastAPI:
 
     # Conta
     application.add_api_route("/customers/{customer_key}/accounts", account_resource.on_post_account, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}", account_resource.on_get_by_key, methods=["GET"])
 
     register_error_handlers(application)
 
