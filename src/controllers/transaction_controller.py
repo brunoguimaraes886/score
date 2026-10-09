@@ -6,9 +6,10 @@ from errors import (
     AccountNotActive,
     AccountNotFound,
     IdempotencyKeyConflict,
+    InsufficientBalance,
     InvalidDocumentNumber,
 )
-from models import AccountStatus, AccountType, EntryType, Transaction, TransactionType
+from models import Account, AccountStatus, AccountType, EntryType, Transaction, TransactionType
 from repositories import AccountRepository, BankClockRepository, DepositRepository, EntryRepository, TransactionRepository
 from utils.document_number import FORMATTED_CPF_LENGTH, is_valid_cnpj, is_valid_cpf
 from utils.request_hash import hash_request_body
@@ -99,6 +100,67 @@ class TransactionController(BaseController):
 
         return transaction_dto
 
+    def withdraw(self, account_key: str, account_token: str, withdrawal_data: dict) -> dict:
+        """Saque: o dinheiro vai para a conta OUTSIDE_WORLD (MOV-07, MOV-15). As regras, nesta ordem:
+
+        1. a conta é do dono do token (404 QIT001010, R8): só o dono saca;
+        2. a mesma request_control_key com o mesmo pedido devolve a resposta
+           da primeira vez, com o saldo de depois daquele saque (MOV-19);
+           com outro pedido, 409 QIT001014 (MOV-12);
+        3. trava a conta (MOV-05);
+        4. a conta está ACTIVE (409 QIT001011, CLI-09);
+        5. o saldo cobre o valor (422 QIT001015, MOV-08).
+
+        Depois: a operação WITHDRAWAL, o AMOUNT −valor na conta e o AMOUNT
+        +valor na OUTSIDE_WORLD. Sem tarifa (MOV-09). A resposta traz a key
+        e o saldo novo.
+        """
+        account = self.get_owned_account(account_key, account_token)
+
+        request_control_key = withdrawal_data["request_control_key"]
+        request_hash = hash_request_body(TransactionType.WITHDRAWAL, account_key, withdrawal_data)
+
+        repeated_transaction = self._find_repeated(request_control_key, request_hash)
+        if repeated_transaction is not None:
+            return TransactionDTO.with_balance(repeated_transaction, self._balance_after(repeated_transaction, account))
+
+        accounting_date = self.bank_clock_repository.get_accounting_date()
+        account = self.account_repository.lock_accounts([account])[0]
+
+        # Uma chamada com a mesma chave pode ter concluído enquanto esta esperava a trava.
+        repeated_transaction = self._find_repeated(request_control_key, request_hash)
+        if repeated_transaction is not None:
+            return TransactionDTO.with_balance(repeated_transaction, self._balance_after(repeated_transaction, account))
+
+        if account.status.enumerator != AccountStatus.ACTIVE:
+            raise AccountNotActive(account_key, account.status.enumerator)
+
+        amount = withdrawal_data["amount"]
+
+        if account.balance < amount:
+            raise InsufficientBalance(account_key)
+
+        outside_world = self.account_repository.get_system_account(AccountType.OUTSIDE_WORLD)
+
+        try:
+            transaction = self.transaction_repository.create(TransactionType.WITHDRAWAL, request_control_key, request_hash, accounting_date)
+            self.entry_repository.create(transaction, account, EntryType.AMOUNT, -amount)
+            self.entry_repository.create(transaction, outside_world, EntryType.AMOUNT, amount)
+
+            transaction_dto = TransactionDTO.with_balance(transaction, account.balance)
+            self.logger.info("operation_ready_to_commit transaction_key=%s", transaction.transaction_key)
+            self.session.commit()
+        except IntegrityError:
+            self.session.rollback()
+
+            repeated_transaction = self._find_repeated(request_control_key, request_hash)
+            if repeated_transaction is None:
+                raise
+
+            return TransactionDTO.with_balance(repeated_transaction, self._balance_after(repeated_transaction, account))
+
+        return transaction_dto
+
     def _find_repeated(self, request_control_key: str, request_hash: str) -> Transaction:
         """A operação já gravada com esta chave e o mesmo pedido; None quando a chave é nova (MOV-12, MOV-19).
 
@@ -121,3 +183,9 @@ class TransactionController(BaseController):
             return is_valid_cpf(depositor_document)
 
         return is_valid_cnpj(depositor_document)
+
+    def _balance_after(self, transaction: Transaction, account: Account) -> int:
+        """O saldo da conta logo depois da operação: o balance_after do último lançamento dela na operação (MOV-19)."""
+        entries = self.entry_repository.list_by_transaction(transaction, [account.id])
+
+        return entries[-1].balance_after
