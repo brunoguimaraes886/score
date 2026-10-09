@@ -1,4 +1,5 @@
-# O docker compose sobe a aplicacao e o banco juntos, com um comando so:
+# O docker compose sobe a aplicacao, o banco e o Mockserver juntos, com um
+# comando so:
 #
 #     docker compose up
 #
@@ -32,7 +33,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
       APP_ENV: ${APP_ENV:-local}
       SERVICE_NAME: ${SERVICE_NAME:-bootcamp-api}
-      # A senha que protege os endpoints internos da API. O padrao vale pra
+      # A senha que protege os endpoints internos. O padrao vale pra
       # estudar; num sistema de verdade, isso nunca teria valor padrao.
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
       # O segundo token das rotas /internal (PRD-13). Mesmo aviso do de
@@ -46,14 +47,11 @@ services:
       # rodando um comando. Passou, a API responde 503.
       DB_LOCK_TIMEOUT_MS: ${DB_LOCK_TIMEOUT_MS:-5000}
       DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-5000}
-      DAILY_TRANSFER_LIMIT: ${DAILY_TRANSFER_LIMIT:-10}
-      # A API de boletos (assunto do sabado 4). Variavel que nao esta
-      # nesta lista NAO CHEGA no container: o compose repassa o que
-      # esta escrito aqui, e mais nada. Sem estas tres linhas, mexer
-      # nos BANKSLIP_* do .env nao teria efeito nenhum aqui dentro.
-      BANKSLIP_API_URL: ${BANKSLIP_API_URL:-http://localhost:8080}
-      BANKSLIP_API_INTERNAL_TOKEN: ${BANKSLIP_API_INTERNAL_TOKEN:-default_token}
-      BANKSLIP_API_TIMEOUT: ${BANKSLIP_API_TIMEOUT:-5}
+      # O Banco Central, de onde vem a taxa do CDI (ARQ-07). Dentro do
+      # compose, quem responde e o Mockserver, pelo nome "mockserver".
+      # BCB_API_TIMEOUT em segundos: passou, a virada responde 503 (COF-20).
+      BCB_API_URL: ${BCB_API_URL:-http://mockserver:1080}
+      BCB_API_TIMEOUT: ${BCB_API_TIMEOUT:-5}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).
@@ -73,6 +71,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mockserver:
+        condition: service_started
 
   db:
     build: ./database/.
@@ -89,3 +89,17 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  mockserver:
+    # ARQ-05, ARQ-07: o Mockserver faz o papel do Banco Central. A imagem
+    # (mockserver/Dockerfile) ja traz os 10 anos de CDI real do arquivo
+    # mockserver/cdi_expectations.json (ARQ-12): ninguem fala com o Banco
+    # Central de verdade, nem na entrega nem nos testes. A imagem nao tem
+    # shell, entao nao ha healthcheck: os testes esperam o Mockserver
+    # responder (tests/utils/mock_generator.py).
+    build: ./mockserver/.
+    ports:
+      # Os testes programam o Mockserver por esta porta. Se a 1080 estiver
+      # ocupada: MOCKSERVER_PORT=1081 e MOCKSERVER_URL=http://127.0.0.1:1081
+      # no seu .env.
+      - "${MOCKSERVER_PORT:-1080}:1080"
