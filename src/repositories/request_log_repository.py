@@ -1,10 +1,10 @@
 from datetime import timedelta
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from sqlalchemy import func
 
 from database import SessionLocal
-from models import RequestLog
+from models import Account, Customer, RequestLog
 
 
 class RequestLogRepository:
@@ -67,3 +67,17 @@ class RequestLogRepository:
                 query = query.filter(RequestLog.account_key == account_key)
 
             return query.scalar()
+
+    def resolve_customer_auth_key(self, customer_key: str) -> str:
+        """PRD-15: conta aberta do cliente; sem conta, sujeito estavel de 36 caracteres."""
+        normalized = customer_key.lower()
+        with SessionLocal() as session:
+            account_key = (session.query(Account.account_key)
+                           .join(Customer, Customer.id == Account.customer_id)
+                           .filter(Customer.customer_key == normalized,
+                                   Account.account_type_id == 1,
+                                   Account.status_id != 3)
+                           .scalar())
+        if account_key is not None:
+            return account_key
+        return str(uuid5(NAMESPACE_URL, "customer:" + normalized))
