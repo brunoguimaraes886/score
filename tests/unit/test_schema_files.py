@@ -77,6 +77,26 @@ EXPECTED_SCHEMAS = {
         "fields": ["amount", "request_control_key"],
         "required": ["amount", "request_control_key"],
     },
+    "post_transfers.json": {
+        "title": "PostTransfers",
+        "fields": ["destination_account_key", "amount", "request_control_key"],
+        "required": ["destination_account_key", "amount", "request_control_key"],
+    },
+    "get_entries.json": {
+        "title": "GetEntries",
+        "fields": ["limit", "page"],
+        "required": [],
+    },
+    "get_categories.json": {
+        "title": "GetCategories",
+        "fields": ["limit", "page"],
+        "required": [],
+    },
+    "get_piggy_bank_entries.json": {
+        "title": "GetPiggyBankEntries",
+        "fields": ["limit", "page", "category_key"],
+        "required": [],
+    },
 }  # fim de EXPECTED_SCHEMAS
 
 SCHEMA_NAMES = sorted(EXPECTED_SCHEMAS)
