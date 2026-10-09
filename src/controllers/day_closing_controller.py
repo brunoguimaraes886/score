@@ -52,6 +52,9 @@ class DayClosingController(BaseController):
         yield_by_category = {}
         for lot in self.lot_repository.list_open_by_piggy_bank_for_update(piggy_bank):
             cents, residue = lot_yield(lot.principal_remaining + lot.yield_remaining, lot.residue, rate)
+            self.check_numeric_limits(lot.principal_remaining + lot.yield_remaining + cents,
+                                      lot.yield_remaining + cents,
+                                      piggy_bank.balance + sum(yield_by_category.values()) + cents)
             self.lot_repository.update_remaining(lot, lot.principal_remaining, lot.yield_remaining + cents, residue)
             yield_by_category[lot.category_id] = yield_by_category.get(lot.category_id, 0) + cents
         category_ids = [category_id for category_id in sorted(yield_by_category) if yield_by_category[category_id] > 0]

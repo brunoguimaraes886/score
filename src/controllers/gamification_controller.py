@@ -139,6 +139,7 @@ class GamificationController(BaseController):
             return None
 
         whole_reais = record_whole_reais(piggy_bank.balance, account.piggy_record)
+        self.check_numeric_limits(piggy_bank.balance)
         self.gamification_repository.update_piggy_record(account, piggy_bank.balance)
 
         xp_gain = gain_record_xp(account.level, account.xp, whole_reais)
@@ -177,6 +178,7 @@ class GamificationController(BaseController):
         Ganho de 0 XP não grava nada. Cada nível novo soma 1 ponto livre
         (GAM-06).
         """
+        self.check_numeric_limits(xp_gain.xp, xp_gain.xp_gained, account.points_free + xp_gain.levels_gained)
         if xp_gain.xp_gained == 0:
             return
 

@@ -85,6 +85,8 @@ class PiggyBankController(BaseController):
         if account.balance < amount:
             raise InsufficientBalance(account_key)
 
+        self.check_numeric_limits(piggy_bank.balance + amount)
+
         try:
             transaction = self.transaction_repository.create(TransactionType.SAVE, request_control_key, request_hash, accounting_date)
             self.entry_repository.create(transaction, account, EntryType.AMOUNT, -amount)
@@ -168,6 +170,7 @@ class PiggyBankController(BaseController):
             yield_parts = self._take_from_lots(category, amount, accounting_date)
             iof, ir = redemption_taxes(yield_parts)
             net_amount = amount - iof - ir
+            self.check_numeric_limits(account.balance + net_amount)
 
             self.entry_repository.create(transaction, piggy_bank, EntryType.AMOUNT, -amount, category)
 

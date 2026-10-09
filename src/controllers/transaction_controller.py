@@ -95,6 +95,7 @@ class TransactionController(BaseController):
 
         outside_world = self.account_repository.get_system_account(AccountType.OUTSIDE_WORLD)
         amount = deposit_data["amount"]
+        self.check_numeric_limits(account.balance + amount)
 
         try:
             transaction = self.transaction_repository.create(TransactionType.DEPOSIT, request_control_key, request_hash, accounting_date)
@@ -285,6 +286,7 @@ class TransactionController(BaseController):
             prize = amount + fee
 
         bank = self.account_repository.get_system_account(AccountType.BANK)
+        self.check_numeric_limits(destination.balance + amount)
 
         try:
             transaction = self.transaction_repository.create(TransactionType.TRANSFER, request_control_key, request_hash, accounting_date)
