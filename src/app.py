@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
     application.add_api_route("/accounts/{account_key}/deposits", transaction_resource.on_post_deposit, methods=["POST"])
     application.add_api_route("/accounts/{account_key}/withdrawals", transaction_resource.on_post_withdrawal, methods=["POST"])
     application.add_api_route("/accounts/{account_key}/transfers", transaction_resource.on_post_transfer, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}/transactions/{transaction_key}", transaction_resource.on_get_transaction, methods=["GET"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])

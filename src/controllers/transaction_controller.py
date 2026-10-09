@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from calculations import calculate_fee
 from constants import DAILY_TRANSFER_LIMIT
 from controllers.base_controller import BaseController
-from dtos import TransactionDTO
+from dtos import EntryDTO, TransactionDTO
 from errors import (
     AccountNotActive,
     AccountNotFound,
@@ -14,8 +14,9 @@ from errors import (
     InsufficientBalance,
     InvalidDocumentNumber,
     SameAccountTransfer,
+    TransactionNotFound,
 )
-from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, EntryType, Transaction, TransactionType
+from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Entry, EntryType, Transaction, TransactionType
 from repositories import AccountRepository, BankClockRepository, DepositRepository, EntryRepository, TransactionRepository
 from utils.document_number import FORMATTED_CPF_LENGTH, is_valid_cnpj, is_valid_cpf
 from utils.request_hash import hash_request_body
@@ -285,6 +286,29 @@ class TransactionController(BaseController):
 
         return transaction_dto
 
+    def get_transaction(self, account_key: str, account_token: str, transaction_key: str) -> dict:
+        """Uma operação, só para o dono, com os lançamentos da conta e do cofrinho dela. Não grava nada.
+
+        1. a conta é do dono do token (404 QIT001010, R8);
+        2. a operação existe e tem lançamento na conta ou no cofrinho dela
+           (404 QIT001020): operação de outra conta responde como se não
+           existisse (R8).
+        """
+        account = self.get_owned_account(account_key, account_token)
+        piggy_bank = self.account_repository.get_piggy_bank(account)
+        account_ids = [account.id, piggy_bank.id]
+
+        transaction = self.transaction_repository.get_by_key_for_account(transaction_key, account_ids)
+
+        if transaction is None:
+            raise TransactionNotFound(transaction_key)
+
+        entries = []
+        for entry in self.entry_repository.list_by_transaction(transaction, account_ids):
+            entries.append(self._entry_to_dict(entry, transaction))
+
+        return TransactionDTO.obj_to_dict(transaction, entries)
+
     def _find_repeated(self, request_control_key: str, request_hash: str) -> Transaction:
         """A operação já gravada com esta chave e o mesmo pedido; None quando a chave é nova (MOV-12, MOV-19).
 
@@ -313,3 +337,27 @@ class TransactionController(BaseController):
         entries = self.entry_repository.list_by_transaction(transaction, [account.id])
 
         return entries[-1].balance_after
+
+    def _entry_to_dict(self, entry: Entry, transaction: Transaction) -> dict:
+        return EntryDTO.obj_to_dict(entry, transaction, self._counterparty(entry, transaction))
+
+    def _counterparty(self, entry: Entry, transaction: Transaction) -> dict:
+        """A outra ponta do lançamento (MOV-17), nesta ordem:
+
+        1. tarifa, prêmio, rendimento, IOF e IR (tudo que não é AMOUNT): o banco;
+        2. AMOUNT de transferência: o outro cliente, com o CPF mascarado;
+        3. AMOUNT de depósito: quem depositou, com o documento mascarado;
+        4. o resto (saque): None. Guardar e resgatar entram no passo 7.7.
+        """
+        if entry.entry_type.enumerator != EntryType.AMOUNT:
+            return EntryDTO.bank_counterparty()
+
+        transaction_type = transaction.transaction_type.enumerator
+
+        if transaction_type == TransactionType.TRANSFER:
+            return EntryDTO.customer_counterparty(self.entry_repository.get_transfer_counterparty_customer(entry))
+
+        if transaction_type == TransactionType.DEPOSIT:
+            return EntryDTO.depositor_counterparty(self.deposit_repository.get_by_transaction(transaction))
+
+        return None

@@ -45,3 +45,12 @@ class TransactionResource:
             content=jsonable_encoder(transaction),
             status_code=http_status.HTTP_201_CREATED,
         )
+
+    def on_get_transaction(self, account_key: str, transaction_key: str, request: Request) -> JSONResponse:
+        controller = TransactionController()
+        transaction = controller.get_transaction(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER), transaction_key)
+
+        return JSONResponse(
+            content=jsonable_encoder(transaction),
+            status_code=http_status.HTTP_200_OK,
+        )
