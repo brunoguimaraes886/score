@@ -99,6 +99,7 @@ def create_app() -> FastAPI:
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])
     application.add_api_route("/internal/accounts/{account_key}/unblocks", internal_resource.on_post_unblock, methods=["POST"])
+    application.add_api_route("/internal/day_closings", internal_resource.on_post_day_closing, methods=["POST"])
 
     register_error_handlers(application)
 

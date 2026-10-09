@@ -1,7 +1,9 @@
 from fastapi import Response
 from fastapi import status as http_status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
-from controllers import AccountController
+from controllers import AccountController, DayClosingController
 from utils.schema_handler import SchemaHandler
 
 
@@ -18,3 +20,13 @@ class InternalResource:
         controller = AccountController()
         controller.unblock_account(account_key)
         return Response(status_code=http_status.HTTP_204_NO_CONTENT)
+
+    @SchemaHandler.validate("post_day_closings.json")
+    def on_post_day_closing(self, payload: dict) -> JSONResponse:
+        controller = DayClosingController()
+        day_closing = controller.close_day(payload)
+
+        return JSONResponse(
+            content=jsonable_encoder(day_closing),
+            status_code=http_status.HTTP_200_OK,
+        )
