@@ -12,7 +12,7 @@ from middlewares import (
     register_request_logger_middleware,
     register_session_manager_middleware,
 )
-from resources import HealthCheckResource
+from resources import CustomerResource, HealthCheckResource
 from utils.logger import setup_logging
 
 
@@ -56,6 +56,7 @@ def create_app() -> FastAPI:
     # de dentro do resource (API-02).
     # ────────────────────────────────────────────────────────────────
     health_check_resource = HealthCheckResource()
+    customer_resource = CustomerResource()
 
     application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
     application.add_api_route(
@@ -63,6 +64,9 @@ def create_app() -> FastAPI:
         health_check_resource.on_get_health_check,
         methods=["GET"]
     )
+
+    # Cliente
+    application.add_api_route("/customers", customer_resource.on_post, methods=["POST"])
 
     register_error_handlers(application)
 
