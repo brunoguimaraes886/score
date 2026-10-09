@@ -60,7 +60,7 @@ Decisões já consolidadas no `04 - Decisões.md` que este plano aplica: o IR in
 | COF-07 — resgate maior que a categoria → 422 | `test_category_money.py::test_redemption_comes_only_from_the_chosen_category` |
 | COF-18 — nome único entre as ativas | `test_create_and_list_categories.py::test_duplicated_active_name_is_409`; `test_get_and_delete_category.py::test_name_can_be_used_again_after_delete` |
 | COF-19 — sem mover entre categorias | `test_category_money.py::test_redemption_comes_only_from_the_chosen_category` (o dinheiro de uma categoria não paga o resgate da outra) |
-| API-15 — excluir muda o estado; excluída aparece `deleted` e não guarda nem resgata | `test_get_and_delete_category.py::test_deletes_empty_category`; `test_category_money.py::test_deleted_category_refuses_saving_and_redemption` |
+| API-15 — excluir muda o estado; excluída aparece `DELETED` e não guarda nem resgata | `test_get_and_delete_category.py::test_deletes_empty_category`; `test_category_money.py::test_deleted_category_refuses_saving_and_redemption` |
 | CLI-09 — bloqueada mexe em categoria | `test_create_and_list_categories.py::test_blocked_account_creates_and_lists`; `test_get_and_delete_category.py::test_blocked_account_deletes` |
 | CLI-05 — encerrada só lê | `test_create_and_list_categories.py::test_closed_account_refuses_creating_but_lists`; `test_get_and_delete_category.py::test_closed_account_refuses_deleting_but_reads` |
 | R4 — excluir grava evento, nada é apagado | conferências G1 (9.3) e E1 (9.5) |
@@ -1222,12 +1222,12 @@ class CategoryDTO:
 
     @staticmethod
     def obj_to_dict(category: Category, balance: int) -> dict:
-        """A categoria na lista e na consulta: o saldo em centavos (COF-05) e o estado público em minúsculas, active ou deleted (API-15, docs/rotas.md)."""
+        """A categoria na lista e na consulta: o saldo em centavos (COF-05) e o estado público em maiúsculas, ACTIVE ou DELETED (API-15, docs/rotas.md)."""
         return {
             "category_key": category.category_key,
             "name": category.name,
             "is_default": category.is_default,
-            "status": category.status.enumerator.lower(),
+            "status": category.status.enumerator,
             "balance": balance,
             "created_at": category.created_at.isoformat(),
         }
@@ -1345,7 +1345,7 @@ class CategoryController(BaseController):
         2. a categoria existe neste cofrinho (404 QIT001021): a de outro
            cofrinho responde como se não existisse (R8).
 
-        Excluída sai com status deleted (API-15).
+        Excluída sai com status DELETED (API-15).
         """
         account = self.get_owned_account(account_key, account_token)
         piggy_bank = self.account_repository.get_piggy_bank(account)
@@ -1464,7 +1464,7 @@ from controllers.category_controller import CategoryController
   ['economias', 'carro'] ['economias', 'carro'] ['carro']
   DELETED ['economias'] True
   ['ACTIVE', 'DELETED']
-  ['balance', 'category_key', 'created_at', 'is_default', 'name', 'status'] deleted 0 False
+  ['balance', 'category_key', 'created_at', 'is_default', 'name', 'status'] DELETED 0 False
   ```
   (a segunda linha mostra o `limit + 1`: com limit 1, vêm 2 categorias; a terceira linha mostra que a categoria excluída continua no banco, com os dois eventos)
 - `git grep -n -e "session.delete" -e "DELETE FROM" -- src/repositories/category_repository.py` → nenhuma linha (excluir só muda o estado e grava o evento, R4).
@@ -1652,7 +1652,7 @@ class TestCreateAndListCategories:
 
         economias = page["data"][0]
         assert sorted(economias) == CATEGORY_FIELDS
-        assert (economias["name"], economias["is_default"], economias["status"], economias["balance"]) == ("economias", True, "active", 0)
+        assert (economias["name"], economias["is_default"], economias["status"], economias["balance"]) == ("economias", True, "ACTIVE", 0)
         assert len(economias["category_key"]) == 36
         assert type(economias["balance"]) is int
 
@@ -1669,7 +1669,7 @@ class TestCreateAndListCategories:
         assert names_and_balances(page) == [("economias", 0), ("carro", 0)]
 
         carro = page["data"][1]
-        assert (carro["category_key"], carro["is_default"], carro["status"]) == (response["category_key"], False, "active")
+        assert (carro["category_key"], carro["is_default"], carro["status"]) == (response["category_key"], False, "ACTIVE")
 
     def test_lists_the_balance_of_each_category(self):
         account = ObjectGenerator.create_funded_account(50000)
@@ -1747,7 +1747,7 @@ class TestCreateAndListCategories:
             assert status == 400, (payload, response)
             assert response["code"] == "QIT000001"
 
-        for params in [{"limit": "0"}, {"limit": "101"}, {"limit": "abc"}, {"page": "-1"}, {"status": "deleted"}]:
+        for params in [{"limit": "0"}, {"limit": "101"}, {"limit": "abc"}, {"page": "-1"}, {"status": "DELETED"}]:
             status, response = RequestGenerator.GET_categories(account["account_key"], account["account_token"], params)
             assert status == 400, (params, response)
             assert response["code"] == "QIT000001"
@@ -1855,7 +1855,7 @@ class TestCreateAndListCategories:
 
 ### Passo 9.5 — Consultar e excluir categoria
 **Branch:** fase/09-categorias-impostos-sorteio · **Depende de:** 9.4
-**Objetivo:** `CategoryResource.on_get_by_key` e `on_delete_by_key`; as rotas `GET` e `DELETE /accounts/{account_key}/categories/{category_key}`; a excluída aparece com `status` `deleted`.
+**Objetivo:** `CategoryResource.on_get_by_key` e `on_delete_by_key`; as rotas `GET` e `DELETE /accounts/{account_key}/categories/{category_key}`; a excluída aparece com `status` `DELETED`.
 **Decisões:** COF-04 — excluir categoria · API-15 — excluir categoria · COF-18 — nome único · CLI-05 — encerrada só lê · CLI-09 — bloqueada mexe em categoria · R4 — append-only · R8 — outro dono → 404 · API-02 — 204 sem corpo · TST-01 — black box e TDD
 **Arquivos:**
 - `src/resources/category.py` (editar): o conteúdo inteiro passa a ser:
@@ -1954,7 +1954,7 @@ class CategoryResource:
 """Consultar e excluir categoria: GET e DELETE /accounts/{account_key}/categories/{category_key} (COF-04, COF-18, API-15, CLI-05, CLI-09, R4, R5, R8).
 
 A consulta devolve a categoria ativa ou excluída; a excluída sai com
-status deleted. Excluir só muda o estado e grava o evento: a categoria
+status DELETED. Excluir só muda o estado e grava o evento: a categoria
 some da lista, e o nome pode ser usado de novo. A "economias" nunca é
 excluída. Conta bloqueada exclui; encerrada só lê. Os testes que erram o
 token começam com DbUtils.rollback() (PRD-10).
@@ -2013,11 +2013,11 @@ class TestGetAndDeleteCategory:
 
         assert status == 200, response
         assert sorted(response) == CATEGORY_FIELDS
-        assert (response["category_key"], response["name"], response["is_default"], response["status"], response["balance"]) == (category_key, "carro", False, "active", 0)
+        assert (response["category_key"], response["name"], response["is_default"], response["status"], response["balance"]) == (category_key, "carro", False, "ACTIVE", 0)
 
         status, response = get_category(account, default_category_key(account))
         assert status == 200, response
-        assert (response["name"], response["is_default"], response["status"]) == ("economias", True, "active")
+        assert (response["name"], response["is_default"], response["status"]) == ("economias", True, "ACTIVE")
 
     def test_deletes_empty_category(self):
         account = ObjectGenerator.create_account()
@@ -2029,7 +2029,7 @@ class TestGetAndDeleteCategory:
 
         status, response = get_category(account, category_key)
         assert status == 200, response
-        assert (response["name"], response["status"], response["balance"]) == ("carro", "deleted", 0)
+        assert (response["name"], response["status"], response["balance"]) == ("carro", "DELETED", 0)
         assert active_names(account) == ["economias"]
 
         status, response = delete_category(account, category_key)
@@ -2047,8 +2047,8 @@ class TestGetAndDeleteCategory:
 
         assert new_key != old_key
         assert active_names(account) == ["economias", "carro"]
-        assert status_of(account, old_key) == "deleted"
-        assert status_of(account, new_key) == "active"
+        assert status_of(account, old_key) == "DELETED"
+        assert status_of(account, new_key) == "ACTIVE"
 
     def test_default_category_cannot_be_deleted(self):
         account = ObjectGenerator.create_account()
@@ -2058,7 +2058,7 @@ class TestGetAndDeleteCategory:
         assert status == 409, response
         assert response["code"] == "QIT001025"
 
-        assert status_of(account, category_key) == "active"
+        assert status_of(account, category_key) == "ACTIVE"
         assert active_names(account) == ["economias"]
 
     def test_unknown_category_is_404(self):
@@ -2072,7 +2072,7 @@ class TestGetAndDeleteCategory:
                 assert status == 404, (category_key, response)
                 assert response["code"] == "QIT001021"
 
-        assert status_of(other_account, other_key) == "active"
+        assert status_of(other_account, other_key) == "ACTIVE"
 
     def test_blocked_account_deletes(self):
         account = ObjectGenerator.create_account()
@@ -2083,7 +2083,7 @@ class TestGetAndDeleteCategory:
 
         status, response = delete_category(account, category_key)
         assert status == 204, response
-        assert status_of(account, category_key) == "deleted"
+        assert status_of(account, category_key) == "DELETED"
 
     def test_closed_account_refuses_deleting_but_reads(self):
         account = ObjectGenerator.create_account()
@@ -2096,7 +2096,7 @@ class TestGetAndDeleteCategory:
         assert status == 409, response
         assert response["code"] == "QIT001011"
 
-        assert status_of(account, category_key) == "active"
+        assert status_of(account, category_key) == "ACTIVE"
 
     def test_other_account_token_is_404(self):
         DbUtils.rollback()
@@ -2109,7 +2109,7 @@ class TestGetAndDeleteCategory:
             assert status == 404, response
             assert response["code"] == "QIT001010"
 
-        assert status_of(account_a, category_key) == "active"
+        assert status_of(account_a, category_key) == "ACTIVE"
 
     def test_missing_or_wrong_token_is_404(self):
         DbUtils.rollback()
@@ -2122,7 +2122,7 @@ class TestGetAndDeleteCategory:
                 assert status == 404, response
                 assert response["code"] == "QIT001010"
 
-        assert status_of(account, category_key) == "active"
+        assert status_of(account, category_key) == "ACTIVE"
 ```
 
 **Passo a passo:**
@@ -2150,7 +2150,7 @@ class TestGetAndDeleteCategory:
 
 **Testes:** `tests/integration/categories/test_get_and_delete_category.py`. As duas rotas pedem `INTERNAL-TOKEN` e `ACCOUNT-TOKEN` (da conta da URL); nenhuma tem corpo nem query string.
 
-`GET /accounts/{account_key}/categories/{category_key}` — 200 `{"category_key", "name", "is_default", "status", "balance", "created_at"}`, ativa (`active`) ou excluída (`deleted`); 404 `QIT001010` (conta não é do token); 404 `QIT001021` (categoria não é deste cofrinho, ou a key não existe ou é mal formada). Não grava nada.
+`GET /accounts/{account_key}/categories/{category_key}` — 200 `{"category_key", "name", "is_default", "status", "balance", "created_at"}`, ativa (`ACTIVE`) ou excluída (`DELETED`); 404 `QIT001010` (conta não é do token); 404 `QIT001021` (categoria não é deste cofrinho, ou a key não existe ou é mal formada). Não grava nada.
 
 `DELETE /accounts/{account_key}/categories/{category_key}` — 204 sem corpo; 404 `QIT001010`; 409 `QIT001011` (conta encerrada); 404 `QIT001021`; 409 `QIT001022` (já excluída); 409 `QIT001025` (`economias`); 409 `QIT001026` (com saldo; o teste é do 9.6, porque só o 9.6 guarda em categoria do dono). Efeito no banco do 204: `category.status_id` passa a `DELETED` e entra uma linha `DELETED` em `category_status_event`; nada é apagado (R4).
 
@@ -3643,7 +3643,7 @@ class TestYieldQueries:
             assert summary["status"] == expected_status
             assert (summary["piggy_bank_gross_yield"], summary["piggy_bank_net_yield"]) == (0, 0)
             category = get_category(account, category_key)
-            assert (category["gross_yield"], category["net_yield"], category["status"]) == (0, 0, "deleted")
+            assert (category["gross_yield"], category["net_yield"], category["status"]) == (0, 0, "DELETED")
 ```
 
 - `src/controllers/yield_controller.py` (criar): conteúdo inteiro:
@@ -4236,7 +4236,7 @@ Seção para o Bruno; o agente não executa nada daqui.
 | # | Onde | O que foi feito |
 |---|---|---|
 | 1 | Impostos e extrato do resgate. | COF-27 já consolidada: IR usa IOF exato, cada soma arredonda uma vez e IR inteiro respeita o teto. COF-25: conta mostra somente o líquido; resgate líquido zero não gera lançamento na conta. |
-| 2 | Status público da categoria. | DTO, testes e texto corrigidos para active/deleted, iguais à fase 3 e API-15; constantes internas/SQL continuam ACTIVE/DELETED. |
+| 2 | Status público da categoria. | Por solicitação do Bruno, DTO, testes e texto usam ACTIVE/DELETED, como docs/rotas.md e as constantes internas/SQL; o DTO preserva o enumerator sem conversão para minúsculas. |
 | 3 | `docs/rotas.md`, tabela do `counterparty`: "IOF e IR → BANK" no extrato. | Com a decisão 1, os lançamentos `IOF` e `IR` ficam só na conta `BANK`, que nenhum cliente consulta: a linha da tabela não aparece no extrato do cliente. Contrato que cria `docs/rotas.md` corrigido no 3.1: tabela pública sem IOF/IR e regra COF-25 explícita. |
 | 4 | PLANO-00, arquivos do 9.2: só controller e teste. | Entrou `src/repositories/entry_repository.py` (`get_balance_before`): a resposta repetida de um resgate com líquido 0 (sem lançamento na conta) precisa do saldo de antes, e sem ele a repetição daria erro 500. |
 | 5 | PLANO-00, arquivos do 9.8: só controller e teste novo. | Entrou a troca em `tests/integration/gamification/test_fee_with_points.py` (fase 8): ele aplica pontos em chance e depois transfere 10000, que passa a concorrer ao sorteio; com o prêmio (0,2% de chance), a tarifa medida pelo saldo sairia errada e o teste falharia de vez em quando. A última transferência dele passa a ser de 10001 (tarifa 101), que não concorre. |
