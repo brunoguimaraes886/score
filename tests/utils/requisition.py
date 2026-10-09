@@ -9,8 +9,20 @@ API_OFFLINE = (
     "Ela precisa estar de pé pros testes rodarem. Suba com:  docker compose up"
 )
 
+# R3, TST-08: os únicos 5xx que um teste pode receber da API, os dois de
+# dependência fora do ar ou lenta: o banco passou do timeout (PRD-08) e o
+# Banco Central não respondeu (COF-20).
+ACCEPTED_SERVER_ERROR_CODES = ("QIT000503", "QIT001031")
+
 
 class ClientRequisition:
+    # Cada resposta da API recebida no teste em andamento, como (método,
+    # caminho, status, code). É da classe, e não do objeto: as threads dos
+    # testes de concorrência gravam na mesma lista. Quem a esvazia antes de
+    # cada teste e a confere depois é a fixture no_server_errors, em
+    # tests/conftest.py.
+    received_responses = []
+
     @staticmethod
     def send(
         method,
@@ -55,7 +67,40 @@ class ClientRequisition:
             response=response,
         )
 
+        ClientRequisition.record(method, endpoint, base_response.response_status, base_response.response_json)
+
         return base_response
+
+    @staticmethod
+    def start_test() -> None:
+        """Esvazia a lista de respostas: a fixture no_server_errors chama antes de cada teste."""
+        ClientRequisition.received_responses.clear()
+
+    @staticmethod
+    def record(method: str, endpoint: str, status: int, response_json) -> None:
+        """Guarda uma resposta da API: método, caminho, status e o campo code do corpo (None quando o corpo não é um objeto JSON com code)."""
+        code = None
+
+        if isinstance(response_json, dict):
+            code = response_json.get("code")
+
+        ClientRequisition.received_responses.append((method.upper(), endpoint, status, code))
+
+    @staticmethod
+    def server_errors() -> list:
+        """As respostas 5xx do teste em andamento, menos o 503 com um código de ACCEPTED_SERVER_ERROR_CODES (R3)."""
+        errors = []
+
+        for method, endpoint, status, code in list(ClientRequisition.received_responses):
+            if status < 500:
+                continue
+
+            if status == 503 and code in ACCEPTED_SERVER_ERROR_CODES:
+                continue
+
+            errors.append((method, endpoint, status, code))
+
+        return errors
 
 
 class BaseConnectorResponse:
