@@ -365,7 +365,7 @@ class TestIdempotencyRace:
 
     def test_same_key_with_another_body_at_once_is_409(self):
         for operation, transaction_type in [("deposit", "DEPOSIT"), ("withdrawal", "WITHDRAWAL"),
-                                             ("transfer", "TRANSFER"), ("saving", "SAVE"), ("redemption", "REDEEM")]:
+                                            ("transfer", "TRANSFER"), ("saving", "SAVE"), ("redemption", "REDEEM")]:
             for _ in range(ROUNDS):
                 account = ObjectGenerator.create_funded_account(9000)
                 destination = ObjectGenerator.create_account()
@@ -381,6 +381,7 @@ class TestIdempotencyRace:
                     payloads.append(getattr(PayloadGenerator, operation)(**kwargs))
                 method = getattr(RequestGenerator, "POST_" + operation)
                 args = [key] if operation == "deposit" else [key, token]
+                count_before = operation_count(account, transaction_type)
                 results = run_at_the_same_time([partial(method, *args, payload) for payload in payloads])
                 assert sorted(status for status, _ in results) == [201, 409], results
                 winner_index = next(i for i, (status, _) in enumerate(results) if status == 201)
@@ -392,8 +393,11 @@ class TestIdempotencyRace:
                             "transfer": (9000 - amount - amount // 100, 0),
                             "saving": (9000 - amount, amount), "redemption": (amount, 9000 - amount)}[operation]
                 assert balances_of(account) == expected
-                assert winner["balance"] == expected[0]
-                assert operation_count(account, transaction_type) == 1
+                if operation == "deposit":
+                    assert set(winner) == {"transaction_key"}
+                else:
+                    assert winner["balance"] == expected[0]
+                assert operation_count(account, transaction_type) == count_before + 1
                 if operation == "transfer":
                     assert balances_of(destination) == (amount, 0)
                     assert operation_count(destination, "TRANSFER") == 1
@@ -456,7 +460,6 @@ class TestIdempotencyRace:
         assert status == 200, page
         assert len([e for e in page["data"] if e["transaction_type"] == "REDEEM"]) == 1
         MockGenerator.clear_cdi("2026-06-01")
-
 ```
 
 **Passo a passo:**
