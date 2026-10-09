@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from calculations import calculate_fee
 from constants import DAILY_TRANSFER_LIMIT
 from controllers.base_controller import BaseController
+from controllers.gamification_controller import GamificationController
 from dtos import EntryDTO, TransactionDTO
 from errors import (
     AccountNotActive,
@@ -16,7 +17,7 @@ from errors import (
     SameAccountTransfer,
     TransactionNotFound,
 )
-from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Entry, EntryType, Transaction, TransactionType
+from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Entry, EntryType, Transaction, TransactionType, XpEvent
 from repositories import AccountRepository, BankClockRepository, DepositRepository, EntryRepository, TransactionRepository
 from utils.document_number import FORMATTED_CPF_LENGTH, is_valid_cnpj, is_valid_cpf
 from utils.request_hash import hash_request_body
@@ -42,6 +43,7 @@ class TransactionController(BaseController):
         self.deposit_repository = DepositRepository(self.context)
         self.entry_repository = EntryRepository(self.context)
         self.transaction_repository = TransactionRepository(self.context)
+        self.gamification_controller = GamificationController()
 
     def deposit(self, account_key: str, deposit_data: dict) -> dict:
         """Depósito: o dinheiro vem da conta OUTSIDE_WORLD (MOV-07, MOV-15, MOV-16). As regras, nesta ordem:
@@ -271,6 +273,9 @@ class TransactionController(BaseController):
 
             if fee > 0:
                 self.entry_repository.create(transaction, bank, EntryType.FEE, fee)
+
+            self.gamification_controller.award_transfer_xp(account, amount, XpEvent.TRANSFER_SENT, transaction, accounting_date)
+            self.gamification_controller.award_transfer_xp(destination, amount, XpEvent.TRANSFER_RECEIVED, transaction, accounting_date)
 
             transaction_dto = TransactionDTO.with_balance(transaction, account.balance)
             self.logger.info("operation_ready_to_commit transaction_key=%s", transaction.transaction_key)
