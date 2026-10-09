@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from database import Context
-from models import Category, Lot, Transaction
+from models import Account, Category, Lot, Transaction
 
 
 class LotRepository:
@@ -41,6 +41,18 @@ class LotRepository:
             .filter(Lot.category_id == category.id, Lot.principal_remaining + Lot.yield_remaining > 0)
             .order_by(Lot.id)
             .with_for_update()
+            .populate_existing()
+            .all()
+        )
+
+    def list_open_by_piggy_bank_for_update(self, piggy_bank: Account) -> list:
+        """Lotes com dinheiro de todas as categorias, por categoria e antiguidade, travados."""
+        return (
+            self.session.query(Lot)
+            .join(Category, Category.id == Lot.category_id)
+            .filter(Category.account_id == piggy_bank.id, Lot.principal_remaining + Lot.yield_remaining > 0)
+            .order_by(Lot.category_id, Lot.id)
+            .with_for_update(of=Lot)
             .populate_existing()
             .all()
         )

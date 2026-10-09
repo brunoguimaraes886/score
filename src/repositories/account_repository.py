@@ -82,6 +82,20 @@ class AccountRepository:
             .first()
         )
 
+    def list_open_customer_accounts(self) -> list:
+        """As contas de cliente não encerradas, na ordem do id, para a virada."""
+        return (
+            self.session.query(Account)
+            .join(Account.account_type)
+            .join(Account.status)
+            .filter(
+                AccountType.enumerator == AccountType.CUSTOMER,
+                AccountStatus.enumerator != AccountStatus.CLOSED,
+            )
+            .order_by(Account.id)
+            .all()
+        )
+
     def get_piggy_bank(self, account: Account) -> Account:
         """O cofrinho da conta: a conta cujo parent_account_id é o id dela (COF-14)."""
         return self.session.query(Account).filter(Account.parent_account_id == account.id).first()
