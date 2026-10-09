@@ -5,13 +5,15 @@ from sqlalchemy.exc import IntegrityError
 from controllers.base_controller import BaseController
 from dtos import CustomerDTO
 from errors import (
+    CustomerNotFound,
     DuplicatedDocumentNumber,
     DuplicatedEmail,
     InvalidBirthdate,
     InvalidDocumentNumber,
     UnderageCustomer,
 )
-from repositories import CustomerRepository
+from repositories import AccountRepository, CustomerRepository
+from utils.account_token import account_token_matches
 from utils.document_number import is_valid_cpf
 
 
@@ -20,11 +22,22 @@ MINIMUM_AGE = 18
 
 
 class CustomerController(BaseController):
-    """As regras do cliente (CLI-02, CLI-03)."""
+    """As regras do cliente (CLI-02, CLI-03, API-17)."""
 
     def __init__(self) -> None:
         super().__init__(__name__)
         self.customer_repository = CustomerRepository(self.context)
+        self.account_repository = AccountRepository(self.context)
+
+    def get_by_key(self, customer_key: str, account_token: str) -> dict:
+        customer = self.customer_repository.get_by_key(customer_key)
+        account = None
+        if customer is not None:
+            account = self.account_repository.get_open_account_by_customer(customer)
+        if account is None or not account_token_matches(account_token, account.token_hash):
+            self.mark_account_auth_failure()
+            raise CustomerNotFound(customer_key)
+        return CustomerDTO.obj_to_dict(customer)
 
     def create(self, customer_data: dict) -> dict:
         """Cadastra o cliente. As regras, nesta ordem, antes de gravar:
