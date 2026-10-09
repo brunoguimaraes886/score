@@ -94,3 +94,54 @@ class InvalidParameter(QIException):
         http_status = 400
         translation = "Parâmetros inválidos foram fornecidos na requisição."
         super().__init__(title, self.code, http_status, description, translation)
+
+
+class ForbiddenNotAdmin(QIException):
+    """Rota /internal sem o ADMIN-TOKEN certo (PRD-13).
+
+    O INTERNAL-TOKEN já passou: este é o segundo cadeado, só das rotas
+    da operação do banco. Quem responde é o middleware do admin token.
+    """
+
+    code = "QIT000003"
+
+    def __init__(self) -> None:
+        title = "Forbidden"
+        http_status = 403
+        description = "Request must carry a valid admin token"
+        translation = "Requisição precisa do token de administração"
+        super().__init__(title, self.code, http_status, description, translation)
+
+
+class TooManyAuthFailures(QIException):
+    """A barreira contra chute de token disparou (PRD-10).
+
+    Responde antes de conferir qualquer token: quem errou demais na
+    janela espera, mesmo que agora mande o token certo.
+    """
+
+    code = "QIT000429"
+
+    def __init__(self) -> None:
+        title = "Too Many Requests"
+        http_status = 429
+        description = "Too many failed token attempts from this client. Try again later."
+        translation = "Tentativas demais com token errado. Tente de novo mais tarde."
+        super().__init__(title, self.code, http_status, description, translation)
+
+
+class DatabaseTimeout(QIException):
+    """O banco passou do lock_timeout ou do statement_timeout (PRD-08).
+
+    503, e não 500: a API está certa, quem demorou foi a dependência. A
+    transação é desfeita e nada é gravado.
+    """
+
+    code = "QIT000503"
+
+    def __init__(self) -> None:
+        title = "Service Unavailable"
+        http_status = 503
+        description = "The database took too long to answer."
+        translation = "O banco de dados demorou demais para responder."
+        super().__init__(title, self.code, http_status, description, translation)

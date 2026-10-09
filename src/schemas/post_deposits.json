@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "PostDeposits",
+  "type": "object",
+  "properties": {
+    "depositor_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "depositor_document": {
+      "type": "string",
+      "anyOf": [
+        {
+          "minLength": 14,
+          "maxLength": 14,
+          "pattern": "^[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}$"
+        },
+        {
+          "minLength": 18,
+          "maxLength": 18,
+          "pattern": "^[0-9]{2}\\.[0-9]{3}\\.[0-9]{3}/[0-9]{4}-[0-9]{2}$"
+        }
+      ]
+    },
+    "amount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807
+    },
+    "request_control_key": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 36,
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    }
+  },
+  "required": [
+    "depositor_name",
+    "depositor_document",
+    "amount",
+    "request_control_key"
+  ],
+  "additionalProperties": false
+}
