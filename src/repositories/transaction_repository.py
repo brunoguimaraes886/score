@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import uuid4
 
 from database import Context
-from models import Entry, Transaction, TransactionType
+from models import Account, Entry, EntryType, Transaction, TransactionType
 
 
 class TransactionRepository:
@@ -49,4 +49,29 @@ class TransactionRepository:
             .join(Entry, Entry.transaction_id == Transaction.id)
             .filter(Transaction.transaction_key == transaction_key, Entry.account_id.in_(account_ids))
             .first()
+        )
+
+    def count_transfers_sent(self, account: Account, accounting_date: date, since: datetime) -> int:
+        """Quantas transferências a conta enviou no dia contábil, gravadas depois de `since` (CLI-08).
+
+        Enviada = operação TRANSFER com lançamento AMOUNT negativo nesta
+        conta. A recebida não conta. Pedido recusado não gravou operação e
+        também não conta (DAD-13). `since` é o created_at do último evento
+        ACTIVE da conta (AccountRepository.get_active_since); as duas datas
+        vêm do NOW() do banco.
+        """
+        return (
+            self.session.query(Transaction)
+            .join(TransactionType, TransactionType.id == Transaction.transaction_type_id)
+            .join(Entry, Entry.transaction_id == Transaction.id)
+            .join(EntryType, EntryType.id == Entry.entry_type_id)
+            .filter(
+                TransactionType.enumerator == TransactionType.TRANSFER,
+                Transaction.accounting_date == accounting_date,
+                Transaction.created_at > since,
+                Entry.account_id == account.id,
+                EntryType.enumerator == EntryType.AMOUNT,
+                Entry.amount < 0,
+            )
+            .count()
         )

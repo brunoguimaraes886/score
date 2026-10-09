@@ -1,6 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 
 from calculations import calculate_fee
+from constants import DAILY_TRANSFER_LIMIT
 from controllers.base_controller import BaseController
 from dtos import TransactionDTO
 from errors import (
@@ -8,12 +9,13 @@ from errors import (
     AccountNotFound,
     DestinationAccountNotActive,
     DestinationAccountNotFound,
+    DailyTransferLimitReached,
     IdempotencyKeyConflict,
     InsufficientBalance,
     InvalidDocumentNumber,
     SameAccountTransfer,
 )
-from models import Account, AccountStatus, AccountType, EntryType, Transaction, TransactionType
+from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, EntryType, Transaction, TransactionType
 from repositories import AccountRepository, BankClockRepository, DepositRepository, EntryRepository, TransactionRepository
 from utils.document_number import FORMATTED_CPF_LENGTH, is_valid_cnpj, is_valid_cpf
 from utils.request_hash import hash_request_body
@@ -181,7 +183,11 @@ class TransactionController(BaseController):
         8. o saldo da origem cobre valor + tarifa (422 QIT001015, MOV-01,
            MOV-02); a tarifa é calculate_fee(valor, 0): os pontos entram
            no passo 8.7;
-        9. o limite diário (CLI-08) entra no passo 6.9.
+        9. a origem enviou menos de DAILY_TRANSFER_LIMIT transferências no
+           dia contábil, contadas desde o último evento ACTIVE da conta
+           (abertura ou desbloqueio). Na 11ª: a conta fica BLOCKED, com
+           origem AUTOMATIC e motivo SUSPICIOUS_ACTIVITY, o commit grava só
+           o bloqueio, e a resposta é 422 QIT001019 (CLI-08, DAD-13).
 
         Depois: a operação TRANSFER e os lançamentos, nesta ordem: AMOUNT
         −valor e FEE −tarifa na origem; AMOUNT +valor no destino; FEE
@@ -236,6 +242,20 @@ class TransactionController(BaseController):
 
         if account.balance < amount + fee:
             raise InsufficientBalance(account_key)
+
+        active_since = self.account_repository.get_active_since(account)
+        transfers_sent = self.transaction_repository.count_transfers_sent(account, accounting_date, active_since)
+
+        if transfers_sent >= DAILY_TRANSFER_LIMIT:
+            self.account_repository.change_status(
+                account,
+                AccountStatus.BLOCKED,
+                AccountStatusEvent.AUTOMATIC,
+                BlockReason.SUSPICIOUS_ACTIVITY,
+            )
+            self.session.commit()
+
+            raise DailyTransferLimitReached(account_key)
 
         bank = self.account_repository.get_system_account(AccountType.BANK)
 
