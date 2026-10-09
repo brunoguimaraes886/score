@@ -1,4 +1,4 @@
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi import status as http_status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -19,3 +19,8 @@ class AccountResource:
         controller = AccountController()
         account = controller.get_account(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER))
         return JSONResponse(content=jsonable_encoder(account), status_code=http_status.HTTP_200_OK)
+
+    def on_delete_by_key(self, account_key: str, request: Request) -> Response:
+        controller = AccountController()
+        controller.close_account(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER))
+        return Response(status_code=http_status.HTTP_204_NO_CONTENT)

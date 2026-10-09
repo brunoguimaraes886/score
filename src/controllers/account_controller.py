@@ -65,6 +65,14 @@ class AccountController(BaseController):
         self.account_repository.change_status(account, AccountStatus.ACTIVE, AccountStatusEvent.MANUAL)
         self.session.commit()
 
+    def close_account(self, account_key: str, account_token: str) -> None:
+        account = self.get_owned_account(account_key, account_token)
+        account = self.account_repository.lock_accounts([account])[0]
+        if account.status.enumerator != AccountStatus.ACTIVE:
+            raise AccountNotActive(account_key, account.status.enumerator)
+        self.account_repository.change_status(account, AccountStatus.CLOSED)
+        self.session.commit()
+
     def _get_locked_customer_account(self, account_key: str) -> Account:
         account = self.account_repository.get_customer_account(account_key)
         if account is None:

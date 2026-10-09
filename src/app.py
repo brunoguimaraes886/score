@@ -74,6 +74,7 @@ def create_app() -> FastAPI:
     # Conta
     application.add_api_route("/customers/{customer_key}/accounts", account_resource.on_post_account, methods=["POST"])
     application.add_api_route("/accounts/{account_key}", account_resource.on_get_by_key, methods=["GET"])
+    application.add_api_route("/accounts/{account_key}", account_resource.on_delete_by_key, methods=["DELETE"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])
