@@ -2,7 +2,14 @@ from sqlalchemy.exc import IntegrityError
 
 from controllers.base_controller import BaseController
 from dtos import AccountDTO
-from errors import CustomerAlreadyHasAccount, CustomerNotFound
+from errors import (
+    AccountNotActive,
+    AccountNotBlocked,
+    AccountNotFound,
+    CustomerAlreadyHasAccount,
+    CustomerNotFound,
+)
+from models import Account, AccountStatus, AccountStatusEvent
 from repositories import AccountRepository, CategoryRepository, CustomerRepository
 from utils.account_token import generate_account_token, hash_account_token
 
@@ -43,3 +50,23 @@ class AccountController(BaseController):
         customer = self.customer_repository.get_by_id(account.customer_id)
         piggy_bank = self.account_repository.get_piggy_bank(account)
         return AccountDTO.obj_to_dict(account, customer, piggy_bank)
+
+    def block_account(self, account_key: str, reason: str) -> None:
+        account = self._get_locked_customer_account(account_key)
+        if account.status.enumerator != AccountStatus.ACTIVE:
+            raise AccountNotActive(account_key, account.status.enumerator)
+        self.account_repository.change_status(account, AccountStatus.BLOCKED, AccountStatusEvent.MANUAL, reason)
+        self.session.commit()
+
+    def unblock_account(self, account_key: str) -> None:
+        account = self._get_locked_customer_account(account_key)
+        if account.status.enumerator != AccountStatus.BLOCKED:
+            raise AccountNotBlocked(account_key, account.status.enumerator)
+        self.account_repository.change_status(account, AccountStatus.ACTIVE, AccountStatusEvent.MANUAL)
+        self.session.commit()
+
+    def _get_locked_customer_account(self, account_key: str) -> Account:
+        account = self.account_repository.get_customer_account(account_key)
+        if account is None:
+            raise AccountNotFound(account_key)
+        return self.account_repository.lock_accounts([account])[0]
