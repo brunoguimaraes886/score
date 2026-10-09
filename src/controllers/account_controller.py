@@ -74,7 +74,8 @@ class AccountController(BaseController):
            trava: um depósito ao mesmo tempo espera ou é esperado);
         3. a conta está ACTIVE (409 QIT001011): bloqueada precisa ser
            desbloqueada antes, e encerrada é final;
-        4. o saldo é zero (409 QIT001012, CLI-06).
+        4. o saldo é zero (409 QIT001012, CLI-06);
+        5. o cofrinho está zerado e é travado depois da conta (MOV-11).
 
         O cofrinho zerado entra no passo 7.15, entre a regra 4 e a gravação.
         Depois: estado CLOSED e o evento, sem origem e sem motivo (quem muda
@@ -86,6 +87,11 @@ class AccountController(BaseController):
             raise AccountNotActive(account_key, account.status.enumerator)
         if account.balance != 0:
             raise AccountNotEmpty(account_key)
+
+        piggy_bank = self.account_repository.lock_accounts([self.account_repository.get_piggy_bank(account)])[0]
+        if piggy_bank.balance != 0:
+            raise AccountNotEmpty(account_key)
+
         self.account_repository.change_status(account, AccountStatus.CLOSED)
         self.session.commit()
 

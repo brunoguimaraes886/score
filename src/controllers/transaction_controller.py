@@ -4,6 +4,7 @@ from calculations import calculate_fee
 from constants import DAILY_TRANSFER_LIMIT
 from controllers.base_controller import BaseController
 from controllers.gamification_controller import GamificationController
+from controllers.piggy_bank_controller import PiggyBankController
 from dtos import EntryDTO, TransactionDTO
 from errors import (
     AccountNotActive,
@@ -18,7 +19,7 @@ from errors import (
     TransactionNotFound,
 )
 from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Entry, EntryType, Transaction, TransactionType, XpEvent
-from repositories import AccountRepository, BankClockRepository, DepositRepository, EntryRepository, TransactionRepository
+from repositories import AccountRepository, BankClockRepository, CategoryRepository, DepositRepository, EntryRepository, TransactionRepository
 from utils.document_number import FORMATTED_CPF_LENGTH, is_valid_cnpj, is_valid_cpf
 from utils.request_hash import hash_request_body
 
@@ -44,6 +45,8 @@ class TransactionController(BaseController):
         self.entry_repository = EntryRepository(self.context)
         self.transaction_repository = TransactionRepository(self.context)
         self.gamification_controller = GamificationController()
+        self.category_repository = CategoryRepository(self.context)
+        self.piggy_bank_controller = PiggyBankController()
 
     def deposit(self, account_key: str, deposit_data: dict) -> dict:
         """Depósito: o dinheiro vem da conta OUTSIDE_WORLD (MOV-07, MOV-15, MOV-16). As regras, nesta ordem:
@@ -298,6 +301,9 @@ class TransactionController(BaseController):
         2. a operação existe e tem lançamento na conta ou no cofrinho dela
            (404 QIT001020): operação de outra conta responde como se não
            existisse (R8).
+
+        Na operação REDEEM, a resposta traz também o bruto, o IOF, o IR e o
+        líquido, como a resposta do resgate (COF-08).
         """
         account = self.get_owned_account(account_key, account_token)
         piggy_bank = self.account_repository.get_piggy_bank(account)
@@ -312,7 +318,11 @@ class TransactionController(BaseController):
         for entry in self.entry_repository.list_by_transaction(transaction, account_ids):
             entries.append(self._entry_to_dict(entry, transaction))
 
-        return TransactionDTO.obj_to_dict(transaction, entries)
+        redemption_amounts = None
+        if transaction.transaction_type.enumerator == TransactionType.REDEEM:
+            redemption_amounts = self.piggy_bank_controller.get_redemption_amounts(transaction, piggy_bank)
+
+        return TransactionDTO.obj_to_dict(transaction, entries, redemption_amounts)
 
     def list_entries(self, account_key: str, account_token: str, limit: int, offset: int) -> dict:
         """Uma página do extrato da conta principal, só para o dono (MOV-04, MOV-14). Não grava nada.
@@ -368,7 +378,11 @@ class TransactionController(BaseController):
         return entries[-1].balance_after
 
     def _entry_to_dict(self, entry: Entry, transaction: Transaction) -> dict:
-        return EntryDTO.obj_to_dict(entry, transaction, self._counterparty(entry, transaction))
+        category = None
+        if entry.category_id is not None:
+            category = self.category_repository.get_by_id(entry.category_id)
+
+        return EntryDTO.obj_to_dict(entry, transaction, self._counterparty(entry, transaction), category)
 
     def _counterparty(self, entry: Entry, transaction: Transaction) -> dict:
         """A outra ponta do lançamento (MOV-17), nesta ordem:
@@ -376,7 +390,10 @@ class TransactionController(BaseController):
         1. tarifa, prêmio, rendimento, IOF e IR (tudo que não é AMOUNT): o banco;
         2. AMOUNT de transferência: o outro cliente, com o CPF mascarado;
         3. AMOUNT de depósito: quem depositou, com o documento mascarado;
-        4. o resto (saque): None. Guardar e resgatar entram no passo 7.7.
+        4. AMOUNT de guardar e de resgatar: no cofrinho (o lançamento tem
+           categoria), a conta principal; na conta principal, o cofrinho e a
+           categoria do outro lançamento da operação;
+        5. o resto (saque): None.
         """
         if entry.entry_type.enumerator != EntryType.AMOUNT:
             return EntryDTO.bank_counterparty()
@@ -388,5 +405,11 @@ class TransactionController(BaseController):
 
         if transaction_type == TransactionType.DEPOSIT:
             return EntryDTO.depositor_counterparty(self.deposit_repository.get_by_transaction(transaction))
+
+        if transaction_type in [TransactionType.SAVE, TransactionType.REDEEM]:
+            if entry.category_id is not None:
+                return EntryDTO.account_counterparty()
+
+            return EntryDTO.piggy_bank_counterparty(self.entry_repository.get_counterparty_category(entry))
 
         return None

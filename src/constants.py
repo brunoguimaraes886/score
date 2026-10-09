@@ -37,18 +37,14 @@ AUTH_FAILURE_WINDOW_MINUTES = int(os.environ.get("AUTH_FAILURE_WINDOW_MINUTES", 
 DB_LOCK_TIMEOUT_MS = int(os.environ.get("DB_LOCK_TIMEOUT_MS", "5000"))
 DB_STATEMENT_TIMEOUT_MS = int(os.environ.get("DB_STATEMENT_TIMEOUT_MS", "5000"))
 
-# A API de boletos: o serviço de fora que este projeto chama pra emitir
-# uma cobrança (veja src/connectors/). O endereço vem do ambiente, como
-# tudo aqui — na sua máquina ele aponta pro mock server do sábado 4; em
-# produção, apontaria pro serviço de verdade. O código não sabe a
-# diferença, e esse é o ponto.
-BANKSLIP_API_URL = os.environ.get("BANKSLIP_API_URL", "http://localhost:8080")
-BANKSLIP_API_INTERNAL_TOKEN = os.environ.get("BANKSLIP_API_INTERNAL_TOKEN", "default_token")
+# ARQ-07, COF-17: o Banco Central, de onde vem a taxa do CDI (série 12 do
+# SGS). Na entrega e nos testes, quem responde é o Mockserver do compose
+# (ARQ-12): a API nunca fala com o Banco Central de verdade.
+BCB_API_URL = os.environ.get("BCB_API_URL", "http://mockserver:1080")
 
-# Quantos segundos esperar pelo serviço de boletos antes de desistir.
-# Todo connector TEM um timeout — o porquê está em
-# src/connectors/rest_connector.py.
-BANKSLIP_API_TIMEOUT = int(os.environ.get("BANKSLIP_API_TIMEOUT", "5"))
+# PRD-03, COF-20: quantos segundos esperar pela taxa antes de desistir.
+# Passou, a virada responde 503 e o dia não avança.
+BCB_API_TIMEOUT = int(os.environ.get("BCB_API_TIMEOUT", "5"))
 
 # Rotas públicas: não exigem o header INTERNAL-TOKEN. São as duas que
 # precisam responder pra quem ainda não tem token nenhum: a raiz, que

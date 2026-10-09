@@ -1,1 +1,1 @@
-from connectors.bankslip_connector import BankSlipConnector
+from connectors.bcb_connector import BcbConnector
