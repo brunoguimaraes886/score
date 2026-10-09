@@ -1,12 +1,12 @@
-from datetime import date
+from datetime import date, timedelta
 
-from calculations import RANK_CDI_PERCENT, daily_rate, lot_yield
+from calculations import GRACE_DAYS, RANK_CDI_PERCENT, RANK_ORDER, daily_rate, lot_yield, rank_for_balance
 from connectors import BcbConnector
 from controllers.base_controller import BaseController
 from controllers.gamification_controller import GamificationController
 from errors import DayAlreadyClosed, FutureAccountingDate, InvalidAccountingDate
-from models import Account, AccountStatus, AccountType, EntryType, TransactionType
-from repositories import AccountRepository, BankClockRepository, CategoryRepository, EntryRepository, LotRepository, TransactionRepository
+from models import Account, AccountStatus, AccountType, EntryType, RankEvent, TransactionType
+from repositories import AccountRepository, BankClockRepository, CategoryRepository, EntryRepository, GamificationRepository, LotRepository, TransactionRepository
 
 
 class DayClosingController(BaseController):
@@ -18,6 +18,7 @@ class DayClosingController(BaseController):
         self.bank_clock_repository = BankClockRepository(self.context)
         self.category_repository = CategoryRepository(self.context)
         self.entry_repository = EntryRepository(self.context)
+        self.gamification_repository = GamificationRepository(self.context)
         self.lot_repository = LotRepository(self.context)
         self.transaction_repository = TransactionRepository(self.context)
         self.bcb_connector = BcbConnector()
@@ -40,6 +41,7 @@ class DayClosingController(BaseController):
             if cdi_rate is not None:
                 self._pay_yield(account, piggy_bank, bank, cdi_rate, closing_date)
             self.gamification_controller.award_record_xp(account, None, closing_date)
+            self._update_rank(account, piggy_bank, closing_date)
         new_date = self.bank_clock_repository.advance(bank_clock)
         self.logger.info("day_closing_ready_to_commit accounting_date=%s", closing_date)
         self.session.commit()
@@ -66,6 +68,23 @@ class DayClosingController(BaseController):
         piggy_bank = self.account_repository.get_piggy_bank(account)
         locked_accounts = {locked.id: locked for locked in self.account_repository.lock_accounts([account, piggy_bank])}
         return locked_accounts[account.id], locked_accounts[piggy_bank.id]
+
+    def _update_rank(self, account: Account, piggy_bank: Account, closing_date: date) -> None:
+        current_rank = account.rank.enumerator
+        balance_rank = rank_for_balance(piggy_bank.balance)
+        if RANK_ORDER.index(balance_rank) > RANK_ORDER.index(current_rank):
+            self.gamification_controller.raise_rank(account, piggy_bank, closing_date)
+        elif balance_rank == current_rank:
+            if account.grace_until is not None:
+                self.gamification_repository.update_rank(account, current_rank, None)
+                self.gamification_repository.create_rank_event(account, current_rank, RankEvent.GRACE_END, closing_date)
+        elif account.grace_until is None:
+            self.gamification_repository.update_rank(account, current_rank, closing_date + timedelta(days=GRACE_DAYS))
+            self.gamification_repository.create_rank_event(account, current_rank, RankEvent.GRACE_START, closing_date)
+        elif closing_date >= account.grace_until:
+            self.gamification_repository.update_rank(account, balance_rank, None)
+            self.gamification_repository.create_rank_event(account, balance_rank, RankEvent.DOWN, closing_date)
+        self.gamification_repository.update_yield_rank(account, account.rank.enumerator)
 
     def _parse_accounting_date(self, accounting_date: str) -> date:
         try:
