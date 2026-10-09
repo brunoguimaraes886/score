@@ -1,6 +1,8 @@
+from datetime import date
+
 from sqlalchemy.exc import IntegrityError
 
-from calculations import split_redemption
+from calculations import redemption_taxes, split_redemption
 from controllers.base_controller import BaseController
 from controllers.gamification_controller import GamificationController
 from dtos import EntryDTO, TransactionDTO
@@ -105,7 +107,7 @@ class PiggyBankController(BaseController):
         return transaction_dto
 
     def redeem(self, account_key: str, account_token: str, redemption_data: dict) -> dict:
-        """Resgatar: traz dinheiro de uma categoria do cofrinho para a conta (COF-06, COF-07, COF-10, COF-24). As regras, nesta ordem:
+        """Resgatar: traz dinheiro de uma categoria do cofrinho para a conta, com IOF e IR (COF-06, COF-07, COF-08, COF-10, COF-12, COF-24, COF-25). As regras, nesta ordem:
 
         1. a conta é do dono do token (404 QIT001010, R8);
         2. a mesma request_control_key com o mesmo pedido devolve a resposta
@@ -117,13 +119,18 @@ class PiggyBankController(BaseController):
         6. o saldo da categoria cobre o valor (422 QIT001023, COF-07), mesmo
            que o cofrinho todo tenha o dinheiro.
 
-        Depois: a operação REDEEM; o valor sai dos lotes da categoria, do
-        mais antigo para o mais novo, cada um até zerar (COF-06), e de cada
-        lote o principal e o rendimento saem na proporção do lote (COF-24);
-        AMOUNT −valor no cofrinho, na categoria, e AMOUNT +valor na conta.
-        IOF e IR entram no passo 9.2: nesta fase o bruto é o líquido. O
-        ranque não cai (GAM-19) e o recorde não muda (GAM-04). A resposta
-        traz a key, os dois saldos, o bruto, o IOF, o IR e o líquido (COF-08).
+        Depois: a operação REDEEM; o valor bruto sai dos lotes da categoria,
+        do mais antigo para o mais novo, cada um até zerar (COF-06), e de
+        cada lote o principal e o rendimento saem na proporção do lote
+        (COF-24). O IOF e o IR incidem só sobre o rendimento, pelo prazo de
+        cada lote (redemption_taxes, COF-12). Os lançamentos, nesta ordem:
+        AMOUNT −bruto no cofrinho, na categoria; AMOUNT +líquido na conta
+        (líquido = bruto − IOF − IR); IOF +IOF e IR +IR na conta BANK
+        (COF-25). Valor zero não gera lançamento. No extrato da conta, o
+        resgate é uma linha só, com o líquido; o bruto, o IOF e o IR saem na
+        resposta e na consulta da operação. O ranque não cai (GAM-19) e o
+        recorde não muda (GAM-04). A resposta traz a key, os dois saldos, o
+        bruto, o IOF, o IR e o líquido (COF-08).
         """
         account = self.get_owned_account(account_key, account_token)
 
@@ -151,11 +158,24 @@ class PiggyBankController(BaseController):
         if self.category_repository.get_balance(category) < amount:
             raise InsufficientCategoryBalance(category.category_key)
 
+        bank = self.account_repository.get_system_account(AccountType.BANK)
+
         try:
             transaction = self.transaction_repository.create(TransactionType.REDEEM, request_control_key, request_hash, accounting_date)
-            self._take_from_lots(category, amount)
+            yield_parts = self._take_from_lots(category, amount, accounting_date)
+            iof, ir = redemption_taxes(yield_parts)
+            net_amount = amount - iof - ir
+
             self.entry_repository.create(transaction, piggy_bank, EntryType.AMOUNT, -amount, category)
-            self.entry_repository.create(transaction, account, EntryType.AMOUNT, amount)
+
+            if net_amount > 0:
+                self.entry_repository.create(transaction, account, EntryType.AMOUNT, net_amount)
+
+            if iof > 0:
+                self.entry_repository.create(transaction, bank, EntryType.IOF, iof)
+
+            if ir > 0:
+                self.entry_repository.create(transaction, bank, EntryType.IR, ir)
 
             redemption_amounts = self.get_redemption_amounts(transaction, piggy_bank)
             transaction_dto = TransactionDTO.with_redemption(transaction, account.balance, piggy_bank.balance, redemption_amounts)
@@ -176,8 +196,8 @@ class PiggyBankController(BaseController):
         """O bruto, o IOF, o IR e o líquido de um resgate, remontados dos lançamentos da operação (COF-08, MOV-19).
 
         Bruto: o que saiu do cofrinho (os AMOUNT do cofrinho, com o sinal
-        trocado). IOF e IR: os lançamentos IOF e IR da conta BANK (passo
-        9.2; nesta fase, 0). Líquido: bruto − IOF − IR. A consulta da
+        trocado). IOF e IR: os lançamentos IOF e IR da conta BANK (COF-25).
+        Líquido: bruto − IOF − IR. A consulta da
         operação (TransactionController.get_transaction) usa o mesmo método.
         """
         bank = self.account_repository.get_system_account(AccountType.BANK)
@@ -238,15 +258,17 @@ class PiggyBankController(BaseController):
             "is_last_page": is_last_page,
         }
 
-    def _take_from_lots(self, category: Category, amount: int) -> int:
+    def _take_from_lots(self, category: Category, amount: int, accounting_date: date) -> list:
         """Tira o valor dos lotes da categoria, do mais antigo para o mais novo, cada um até zerar (COF-06).
 
         De cada lote, principal e rendimento saem na proporção dele
-        (split_redemption, COF-24); o resíduo fica. Devolve quanto saiu de
-        rendimento, somado: é sobre ele que o imposto do passo 9.2 incide.
+        (split_redemption, COF-24); o resíduo fica. Devolve, por lote de
+        onde saiu dinheiro, a tupla (dias de prazo, centavos de rendimento)
+        que redemption_taxes recebe: o prazo é a data contábil do resgate
+        menos a do lote, em dias corridos (COF-12).
         """
         remaining = amount
-        yield_taken = 0
+        yield_parts = []
 
         for lot in self.lot_repository.list_open_for_update(category):
             if remaining == 0:
@@ -257,10 +279,10 @@ class PiggyBankController(BaseController):
 
             self.lot_repository.update_remaining(lot, lot.principal_remaining - principal_part, lot.yield_remaining - yield_part, lot.residue)
 
-            yield_taken = yield_taken + yield_part
+            yield_parts.append(((accounting_date - lot.accounting_date).days, yield_part))
             remaining = remaining - taken
 
-        return yield_taken
+        return yield_parts
 
     def _get_category(self, piggy_bank: Account, category_key: str) -> Category:
         """A categoria do pedido: sem category_key, a "economias" (COF-03).
@@ -323,8 +345,16 @@ class PiggyBankController(BaseController):
         return transaction
 
     def _balance_after(self, transaction: Transaction, account: Account) -> int:
-        """O saldo da conta (ou do cofrinho) logo depois da operação: o balance_after do último lançamento dela na operação (MOV-19)."""
+        """O saldo da conta (ou do cofrinho) logo depois da operação: o balance_after do último lançamento dela na operação (MOV-19).
+
+        O resgate cujo líquido é 0 (o imposto levou todo o rendimento de um
+        resgate só de rendimento) não tem lançamento na conta: o saldo dela
+        é o de antes da operação.
+        """
         entries = self.entry_repository.list_by_transaction(transaction, [account.id])
+
+        if not entries:
+            return self.entry_repository.get_balance_before(account, transaction)
 
         return entries[-1].balance_after
 
