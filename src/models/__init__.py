@@ -18,3 +18,5 @@ from models.entry import Entry
 from models.lot import Lot
 from models.xp_event import XpEvent
 from models.level_event import LevelEvent
+from models.rank_event import RankEvent
+from models.points_event import PointsEvent
