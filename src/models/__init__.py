@@ -6,3 +6,7 @@ from models.entry_type import EntryType
 from models.category_status import CategoryStatus
 from models.piggy_rank import PiggyRank
 from models.customer import Customer
+from models.bank_clock import BankClock
+from models.request_log import RequestLog
+from models.account import Account
+from models.account_status_event import AccountStatusEvent
