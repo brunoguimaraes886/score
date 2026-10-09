@@ -24,7 +24,14 @@ Vale para qualquer agente que mexa neste repositório: Codex, Claude Code ou out
 - Nunca edite `AGENTS.md`, `CLAUDE.md`, `docs/plano/` ou `docs/decisoes.md`. Nunca crie nem edite o `.env`.
 - Crie e edite arquivos só com a ferramenta de edição do agente, em UTF-8 sem BOM. Nunca por redirecionamento do terminal (`>`, `>>`, `Set-Content`, `Out-File`): no Windows, ele pode gravar outra codificação.
 - Nunca rode comando que não termina sozinho (`docker compose up` sem `-d`, `docker compose logs -f`). Nunca instale nada fora do `.venv`.
-- Faltou informação ou apareceu uma escolha: PARE (seção 8). Não escolha.
+- Faltou uma decisão de negócio que o roteiro não define: PARE (seção 8). Escolhas operacionais seguem a política de autonomia abaixo.
+
+### Autonomia de execução — autorização do Bruno
+
+- Resolva autonomamente preparação documental, falhas do executor ou sandbox, comandos indisponíveis, caminhos e problemas de ambiente. Tente novamente ou use uma alternativa equivalente e segura; uma primeira falha operacional não exige parar nem perguntar. Preserve Windows, UTF-8 sem BOM, uso do editor do agente, instalação somente no `.venv` e Git exclusivamente local.
+- Correções necessárias para fazer os comandos, testes e lint prescritos funcionarem também são autorizadas, inclusive em arquivos fora do campo **Arquivos**, quando o diagnóstico define a correção sem mudar o contrato de negócio. Limite a mudança à causa comprovada, confira os testes afetados e registre a correção em commit local próprio, separado do commit do passo. Não invente funcionalidades, dependências ou decisões de negócio; não apague, pule ou afrouxe testes para obter aprovação.
+- As correções operacionais autorizadas são exceções às proibições de escopo e às condições **Pare se** de ambiente, comandos, testes e lint dos roteiros. Confira e registre separadamente seus arquivos; a conferência do commit de implementação continua exigindo exatamente os arquivos do passo. Correções de `AGENTS.md` expressamente solicitadas podem ser registradas durante a fase em commit próprio.
+- Pare somente se, após diagnóstico e alternativas seguras, persistir um bloqueio real: decisão de negócio ausente ou contraditória, risco de perder dados ou trabalho, alteração de contrato não autorizada, conflito de merge ou falha não resolvida após três tentativas de correção. Traga o relatório da seção 8; não peça confirmação para providências operacionais já autorizadas.
 
 ### Execução econômica
 
@@ -232,6 +239,8 @@ git tag fase-NN
 **Proibido:** `git push --force`, `-f` e `--force-with-lease`; `git commit --amend`; `git rebase`; `git reset`; `git add .`, `git add -A` e `git add --all`; `git commit -a`; `git stash`; `git restore`; `git checkout -- <arquivo>`; `git clean`; `git merge --squash`; apagar branch ou tag; mudar o `git config`; abrir pull request; commit com teste vermelho ou lint com saída; commitar o `.env`.
 
 ## 8. Quando parar
+
+As condições abaixo se aplicam depois das exceções de preparação documental e da política de autonomia da seção 2. Falha operacional recuperável e correção necessária expressamente autorizada não são motivos para interromper a execução na primeira tentativa.
 
 PARE quando:
 

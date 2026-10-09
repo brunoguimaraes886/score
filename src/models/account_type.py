@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, UniqueConstraint, func
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, func
 from models.base import Base
 
 
-class SampleEntityStatus(Base):
-    __tablename__ = "sample_entity_status"
+class AccountType(Base):
+    __tablename__ = "account_type"
 
     id = Column(Integer, primary_key=True)
     enumerator = Column(String(50), nullable=False)
@@ -11,7 +11,7 @@ class SampleEntityStatus(Base):
 
     __table_args__ = (UniqueConstraint("enumerator"),)
 
-    CREATED = "created"
-    PENDING = "pending"
-    FAILED = "failed"
-    SUCCESS = "success"
+    CUSTOMER = "CUSTOMER"
+    PIGGY_BANK = "PIGGY_BANK"
+    BANK = "BANK"
+    OUTSIDE_WORLD = "OUTSIDE_WORLD"
