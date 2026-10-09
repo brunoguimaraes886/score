@@ -16,11 +16,12 @@ if not environ.get("APP_ENV") or environ.get("APP_ENV") == "local":
 
 @pytest.fixture(autouse=True)
 def no_server_errors():
-    """R3, TST-08: reprova o teste que recebeu da API um 5xx fora dos dois 503 de dependência.
+    """R3, TST-08: reprova o teste que recebeu da API um 5xx fora dos 503 de dependência.
 
     Antes de cada teste, esvazia a lista de respostas do ClientRequisition;
     depois dele, confere a lista. Os únicos 5xx aceitos são o 503 QIT000503
-    (o banco passou do timeout, PRD-08) e o 503 QIT001031 (o Banco Central
+    (o banco passou do timeout, PRD-08), o 503 QIT000504 (banco indisponível)
+    e o 503 QIT001031 (o Banco Central
     não respondeu, COF-20). Qualquer outro 5xx vira erro na desmontagem do
     teste, com as respostas na mensagem.
 

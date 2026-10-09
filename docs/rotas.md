@@ -57,6 +57,12 @@ Erros que valem para todas as rotas (cada rota, mais abaixo, lista só os seus):
 | `QIT000429` | 429 | barreira contra chute de token (PRD-10): erros de token demais do mesmo IP, ou da mesma conta e IP, na janela; responde antes de conferir o token (toda rota menos `/` e `/health_check`) |
 | `QIT001032` | 422 | acumulador ultrapassaria BIGINT; operação/virada integralmente desfeita (DAD-19; guarda em 9.10) |
 | `QIT000503` | 503 | o banco passou do `lock_timeout` ou do `statement_timeout` (PRD-08); nada é gravado |
+| `QIT000504` | 503 | conexão com o banco recusada, perdida ou indisponível; nenhuma movimentação parcial é confirmada |
+
+`QIT000504` (`DatabaseUnavailable`): `title` = `Service Unavailable`,
+`description` = `The database is unavailable.`,
+`translation` = `O banco de dados está indisponível.`.
+`QIT000503` continua reservado ao timeout de trava/comando.
 
 `QIT000500` (500) não é resposta de regra: é bug (R3).
 

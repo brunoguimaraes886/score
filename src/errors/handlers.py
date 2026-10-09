@@ -2,12 +2,14 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from psycopg2 import errors as psycopg2_errors
-from sqlalchemy.exc import OperationalError
+from psycopg2 import OperationalError as PgOperationalError
+from sqlalchemy.exc import DBAPIError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from errors.base_error import (
     QIException,
     DatabaseTimeout,
+    DatabaseUnavailable,
     InternalError,
     InvalidParameter,
     InvalidSchema,
@@ -54,6 +56,19 @@ def is_database_timeout(exception: Exception) -> bool:
     """
     original = getattr(exception, "orig", None)
     return isinstance(original, (psycopg2_errors.LockNotAvailable, psycopg2_errors.QueryCanceled))
+
+
+def is_database_unavailable(exception: DBAPIError) -> bool:
+    """Reconhece perda/recusa de conexão e desligamento do PostgreSQL."""
+    if exception.connection_invalidated:
+        return True
+    original = exception.orig
+    if not isinstance(original, PgOperationalError):
+        return False
+    sqlstate = getattr(original, "pgcode", None)
+    # Erros de conexão no cliente não têm SQLSTATE; classe 08 significa
+    # falha de conexão, e 57P01/02/03 indicam desligamento ou recuperação.
+    return sqlstate is None or sqlstate.startswith("08") or sqlstate in ("57P01", "57P02", "57P03")
 
 
 def describe_validation_error(error: dict) -> str:
@@ -112,13 +127,18 @@ def register_error_handlers(application: FastAPI) -> None:
 
         return qi_exception_to_response(InvalidSchema(description), request)
 
+    @application.exception_handler(DBAPIError)
     @application.exception_handler(OperationalError)
-    def handle_operational_error(request: Request, exception: OperationalError) -> JSONResponse:
+    def handle_operational_error(request: Request, exception: DBAPIError) -> JSONResponse:
         # A sessão da rota fica com a transação abortada; o session_manager
         # a fecha, e fechar desfaz tudo: nada é gravado (PRD-08).
         if is_database_timeout(exception):
             logger.warning(f"Timeout do banco em {request.method} {request.url.path}")
             return qi_exception_to_response(DatabaseTimeout(), request)
+
+        if is_database_unavailable(exception):
+            logger.warning(f"Banco indisponível em {request.method} {request.url.path}")
+            return qi_exception_to_response(DatabaseUnavailable(), request)
 
         logger.exception(f"Erro do banco em {request.method} {request.url.path}")
         return qi_exception_to_response(InternalError(), request)

@@ -147,8 +147,9 @@ e `code`. O status faz parte do contrato: 400 para formato, 403 para token
 interno/admin, 404 para recurso ausente ou sem acesso, 409 para duplicidade
 ou estado incompatível e 422 para regra de negócio.
 
-O timeout de trava/comando do banco retorna 503 `QIT000503`; falha do CDI
-retorna 503 `QIT001031`. `QIT000500` representa erro inesperado.
+O timeout de trava/comando do banco retorna 503 `QIT000503`; conexão com
+o banco indisponível retorna 503 `QIT000504`; falha do CDI retorna
+503 `QIT001031`. `QIT000500` representa erro inesperado.
 O catálogo e os erros específicos estão em [docs/rotas.md](docs/rotas.md#erro)
 e `src/errors/`.
 

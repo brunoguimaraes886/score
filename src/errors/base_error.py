@@ -145,3 +145,16 @@ class DatabaseTimeout(QIException):
         description = "The database took too long to answer."
         translation = "O banco de dados demorou demais para responder."
         super().__init__(title, self.code, http_status, description, translation)
+
+
+class DatabaseUnavailable(QIException):
+    """A conexão com o banco está indisponível."""
+
+    code = "QIT000504"
+
+    def __init__(self) -> None:
+        title = "Service Unavailable"
+        http_status = 503
+        description = "The database is unavailable."
+        translation = "O banco de dados está indisponível."
+        super().__init__(title, self.code, http_status, description, translation)

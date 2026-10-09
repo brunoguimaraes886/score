@@ -2,11 +2,11 @@ import re
 
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError
 
 from constants import AUTH_FAILURE_LIMIT, AUTH_FAILURE_WINDOW_MINUTES, BYPASS_ENDPOINTS
-from errors.base_error import DatabaseTimeout, TooManyAuthFailures
-from errors.handlers import is_database_timeout, qi_exception_to_response
+from errors.base_error import DatabaseTimeout, DatabaseUnavailable, TooManyAuthFailures
+from errors.handlers import is_database_timeout, is_database_unavailable, qi_exception_to_response
 from middlewares.request_log_writer import get_client_ip
 from models import RequestLog
 from repositories import RequestLogRepository
@@ -45,9 +45,11 @@ def register_auth_barrier_middleware(application: FastAPI) -> None:
             internal_failures, account_failures = await run_in_threadpool(
                 count_failures, get_client_ip(request), request_state.account_key,
             )
-        except OperationalError as error:
+        except DBAPIError as error:
             if is_database_timeout(error):
-                return qi_exception_to_response(DatabaseTimeout())
+                return qi_exception_to_response(DatabaseTimeout(), request)
+            if is_database_unavailable(error):
+                return qi_exception_to_response(DatabaseUnavailable(), request)
             raise
         if internal_failures >= AUTH_FAILURE_LIMIT or account_failures >= AUTH_FAILURE_LIMIT:
             return qi_exception_to_response(TooManyAuthFailures())
