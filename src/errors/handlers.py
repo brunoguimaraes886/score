@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from psycopg2 import errors as psycopg2_errors
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from errors.base_error import (
     QIException,
+    DatabaseTimeout,
     InternalError,
     InvalidParameter,
     InvalidSchema,
@@ -36,6 +39,18 @@ def qi_exception_to_response(exception: QIException) -> JSONResponse:
         "code": exception.code,
     }
     return JSONResponse(status_code=exception.http_status, content=body)
+
+
+def is_database_timeout(exception: Exception) -> bool:
+    """True quando o PostgreSQL desistiu por tempo (PRD-08).
+
+    `LockNotAvailable` (SQLSTATE 55P03): passou do lock_timeout esperando
+    uma trava. `QueryCanceled` (SQLSTATE 57014): passou do
+    statement_timeout rodando o comando. O SQLAlchemy embrulha o erro do
+    psycopg2 num OperationalError e guarda o original em `.orig`.
+    """
+    original = getattr(exception, "orig", None)
+    return isinstance(original, (psycopg2_errors.LockNotAvailable, psycopg2_errors.QueryCanceled))
 
 
 def describe_validation_error(error: dict) -> str:
@@ -90,6 +105,17 @@ def register_error_handlers(application: FastAPI) -> None:
             return qi_exception_to_response(InvalidParameter(description))
 
         return qi_exception_to_response(InvalidSchema(description))
+
+    @application.exception_handler(OperationalError)
+    def handle_operational_error(request: Request, exception: OperationalError) -> JSONResponse:
+        # A sessão da rota fica com a transação abortada; o session_manager
+        # a fecha, e fechar desfaz tudo: nada é gravado (PRD-08).
+        if is_database_timeout(exception):
+            logger.warning(f"Timeout do banco em {request.method} {request.url.path}")
+            return qi_exception_to_response(DatabaseTimeout())
+
+        logger.exception(f"Erro do banco em {request.method} {request.url.path}")
+        return qi_exception_to_response(InternalError())
 
     @application.exception_handler(Exception)
     def handle_unexpected_error(request: Request, exception: Exception) -> JSONResponse:
