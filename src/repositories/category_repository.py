@@ -53,3 +53,7 @@ class CategoryRepository:
         total = self.session.query(func.coalesce(func.sum(Entry.amount), 0)).filter(Entry.category_id == category.id).scalar()
 
         return int(total)
+
+    def get_by_id(self, category_id: int) -> Category:
+        """A categoria com este id; None quando não existe. O id só circula por dentro: para fora sai a category_key (R5)."""
+        return self.session.query(Category).filter(Category.id == category_id).first()

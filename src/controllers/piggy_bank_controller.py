@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from calculations import split_redemption
 from controllers.base_controller import BaseController
 from controllers.gamification_controller import GamificationController
-from dtos import TransactionDTO
+from dtos import EntryDTO, TransactionDTO
 from errors import (
     AccountNotActive,
     CategoryNotFound,
@@ -205,6 +205,39 @@ class PiggyBankController(BaseController):
             "net_amount": gross_amount - iof - ir,
         }
 
+    def list_piggy_bank_entries(self, account_key: str, account_token: str, limit: int, offset: int, category_key: str = None) -> dict:
+        """Uma página do extrato do cofrinho, só para o dono (COF-05, MOV-04, MOV-14). Não grava nada. As regras, nesta ordem:
+
+        1. a conta é do dono do token (404 QIT001010, R8);
+        2. com category_key, a categoria existe neste cofrinho (404
+           QIT001021); nesta fase, só a "economias" (passo 9.6).
+
+        Pede limit + 1 linhas ao repository: se veio a linha a mais, existe
+        próxima página, e ela não entra na resposta.
+        """
+        account = self.get_owned_account(account_key, account_token)
+        piggy_bank = self.account_repository.get_piggy_bank(account)
+
+        category = None
+        if category_key is not None:
+            category = self._get_category(piggy_bank, category_key)
+
+        rows = self.entry_repository.list_piggy_bank_page(piggy_bank, limit, offset, category)
+
+        is_last_page = True
+        if len(rows) > limit:
+            is_last_page = False
+            rows = rows[:-1]
+
+        entries = []
+        for entry, transaction in rows:
+            entries.append(self._piggy_bank_entry_to_dict(entry, transaction))
+
+        return {
+            "entries_list_dto": entries,
+            "is_last_page": is_last_page,
+        }
+
     def _take_from_lots(self, category: Category, amount: int) -> int:
         """Tira o valor dos lotes da categoria, do mais antigo para o mais novo, cada um até zerar (COF-06).
 
@@ -294,3 +327,18 @@ class PiggyBankController(BaseController):
         entries = self.entry_repository.list_by_transaction(transaction, [account.id])
 
         return entries[-1].balance_after
+
+    def _piggy_bank_entry_to_dict(self, entry, transaction: Transaction) -> dict:
+        """Um lançamento do cofrinho no formato do extrato, com a categoria dele e a outra ponta (MOV-17).
+
+        No cofrinho só há dois tipos de lançamento: AMOUNT (guardar e
+        resgatar), cuja outra ponta é a conta principal, e YIELD (rendimento,
+        passo 7.12), cuja outra ponta é o banco.
+        """
+        category = self.category_repository.get_by_id(entry.category_id)
+
+        counterparty = EntryDTO.account_counterparty()
+        if entry.entry_type.enumerator != EntryType.AMOUNT:
+            counterparty = EntryDTO.bank_counterparty()
+
+        return EntryDTO.obj_to_dict(entry, transaction, counterparty, category)

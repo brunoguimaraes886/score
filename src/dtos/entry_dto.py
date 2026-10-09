@@ -54,3 +54,17 @@ class EntryDTO:
     def bank_counterparty() -> dict:
         """Na tarifa, no prêmio, no rendimento, no IOF e no IR: o banco."""
         return {"type": "BANK"}
+
+    @staticmethod
+    def piggy_bank_counterparty(category: Category) -> dict:
+        """Em guardar e resgatar, na conta principal: o cofrinho e a categoria (MOV-17)."""
+        return {
+            "type": "PIGGY_BANK",
+            "category_key": category.category_key,
+            "name": category.name,
+        }
+
+    @staticmethod
+    def account_counterparty() -> dict:
+        """Em guardar e resgatar, no cofrinho: a conta principal (MOV-17)."""
+        return {"type": "ACCOUNT"}

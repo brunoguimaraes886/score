@@ -94,6 +94,7 @@ def create_app() -> FastAPI:
     # Cofrinho
     application.add_api_route("/accounts/{account_key}/savings", piggy_bank_resource.on_post_saving, methods=["POST"])
     application.add_api_route("/accounts/{account_key}/redemptions", piggy_bank_resource.on_post_redemption, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}/piggy_bank_entries", piggy_bank_resource.on_get_piggy_bank_entries, methods=["GET"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])

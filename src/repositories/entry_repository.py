@@ -98,3 +98,30 @@ class EntryRepository:
             .offset(offset)
             .all()
         )
+
+    def list_piggy_bank_page(self, piggy_bank: Account, limit: int, offset: int, category: Category = None) -> list:
+        """Uma página do extrato do cofrinho: pares (lançamento, operação), mais recente primeiro (COF-05, MOV-14).
+
+        A mesma ordem do list_page (created_at decrescente; no empate, id
+        decrescente) e a mesma linha a mais (limit + 1). Com `category`, só
+        os lançamentos dessa categoria.
+        """
+        query = (
+            self.session.query(Entry, Transaction)
+            .join(Transaction, Transaction.id == Entry.transaction_id)
+            .filter(Entry.account_id == piggy_bank.id)
+        )
+
+        if category is not None:
+            query = query.filter(Entry.category_id == category.id)
+
+        return query.order_by(Entry.created_at.desc(), Entry.id.desc()).limit(limit + 1).offset(offset).all()
+
+    def get_counterparty_category(self, entry: Entry) -> Category:
+        """A categoria do outro lançamento da mesma operação: em guardar e resgatar, a do lançamento do cofrinho (MOV-17)."""
+        return (
+            self.session.query(Category)
+            .join(Entry, Entry.category_id == Category.id)
+            .filter(Entry.transaction_id == entry.transaction_id, Entry.id != entry.id)
+            .first()
+        )
