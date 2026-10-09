@@ -1,7 +1,7 @@
 from abc import ABCMeta
 
 from database import get_context
-from errors import AccountNotFound
+from errors import AccountNotFound, NumericLimitExceeded
 from models import Account, RequestLog
 from repositories import AccountRepository
 from utils.account_token import account_token_matches
@@ -41,3 +41,9 @@ class BaseController(metaclass=ABCMeta):
             self.mark_account_auth_failure()
             raise AccountNotFound(account_key)
         return account
+
+    @staticmethod
+    def check_numeric_limits(*values) -> None:
+        """DAD-19: conferir acumuladores antes da escrita; erro provoca rollback integral."""
+        if any(value > 9223372036854775807 for value in values):
+            raise NumericLimitExceeded()

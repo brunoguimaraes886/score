@@ -4,3 +4,5 @@ from controllers.transaction_controller import TransactionController
 from controllers.gamification_controller import GamificationController
 from controllers.piggy_bank_controller import PiggyBankController
 from controllers.day_closing_controller import DayClosingController
+from controllers.category_controller import CategoryController
+from controllers.yield_controller import YieldController

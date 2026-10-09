@@ -7,12 +7,13 @@ from middlewares import (
     register_admin_token_middleware,
     register_auth_barrier_middleware,
     register_internal_token_middleware,
+    register_input_contract_middleware,
     register_request_context_middleware,
     register_request_log_writer_middleware,
     register_request_logger_middleware,
     register_session_manager_middleware,
 )
-from resources import AccountResource, CustomerResource, GamificationResource, HealthCheckResource, InternalResource, PiggyBankResource, TransactionResource
+from resources import AccountResource, CategoryResource, CustomerResource, GamificationResource, HealthCheckResource, InternalResource, PiggyBankResource, TransactionResource
 from utils.logger import setup_logging
 
 
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     # token nenhum. A ordem inteira, com os porquês:
     # docs/plano/PLANO-00-indice.md, seção "Middlewares".
     # ────────────────────────────────────────────────────────────────
+    register_input_contract_middleware(application)
     register_session_manager_middleware(application)
     register_admin_token_middleware(application)
     register_internal_token_middleware(application)
@@ -62,6 +64,7 @@ def create_app() -> FastAPI:
     transaction_resource = TransactionResource()
     gamification_resource = GamificationResource()
     piggy_bank_resource = PiggyBankResource()
+    category_resource = CategoryResource()
 
     application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
     application.add_api_route(
@@ -95,6 +98,12 @@ def create_app() -> FastAPI:
     application.add_api_route("/accounts/{account_key}/savings", piggy_bank_resource.on_post_saving, methods=["POST"])
     application.add_api_route("/accounts/{account_key}/redemptions", piggy_bank_resource.on_post_redemption, methods=["POST"])
     application.add_api_route("/accounts/{account_key}/piggy_bank_entries", piggy_bank_resource.on_get_piggy_bank_entries, methods=["GET"])
+
+    # Categorias do cofrinho
+    application.add_api_route("/accounts/{account_key}/categories", category_resource.on_post, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}/categories", category_resource.on_get_list, methods=["GET"])
+    application.add_api_route("/accounts/{account_key}/categories/{category_key}", category_resource.on_get_by_key, methods=["GET"])
+    application.add_api_route("/accounts/{account_key}/categories/{category_key}", category_resource.on_delete_by_key, methods=["DELETE"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])

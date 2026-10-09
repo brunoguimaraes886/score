@@ -75,7 +75,7 @@ class TestFeeWithPoints:
         assert status == 200, response
         assert fee_paid(account, destination, 10000) == 100
         apply_points(account, "CHANCE", 2)
-        assert fee_paid(account, destination, 10000) == 100
+        assert fee_paid(account, destination, 10001) == 101
 
     def test_ten_fee_points_make_the_fee_zero_without_entry(self):
         account = create_account_with_levels(LEVEL_TEN_AMOUNT)

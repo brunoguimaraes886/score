@@ -1,6 +1,8 @@
+import random
+
 from sqlalchemy.exc import IntegrityError
 
-from calculations import calculate_fee
+from calculations import calculate_fee, draw_prize, is_eligible_for_prize
 from constants import DAILY_TRANSFER_LIMIT
 from controllers.base_controller import BaseController
 from controllers.gamification_controller import GamificationController
@@ -37,7 +39,7 @@ class TransactionController(BaseController):
        commit; regra que falha não grava nada (DAD-13).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, rng=None) -> None:
         super().__init__(__name__)
         self.account_repository = AccountRepository(self.context)
         self.bank_clock_repository = BankClockRepository(self.context)
@@ -47,6 +49,8 @@ class TransactionController(BaseController):
         self.gamification_controller = GamificationController()
         self.category_repository = CategoryRepository(self.context)
         self.piggy_bank_controller = PiggyBankController()
+        # TST-06: o gerador do sorteio é injetável; sem gerador, o do sistema operacional.
+        self.rng = rng if rng is not None else random.SystemRandom()
 
     def deposit(self, account_key: str, deposit_data: dict) -> dict:
         """Depósito: o dinheiro vem da conta OUTSIDE_WORLD (MOV-07, MOV-15, MOV-16). As regras, nesta ordem:
@@ -91,6 +95,7 @@ class TransactionController(BaseController):
 
         outside_world = self.account_repository.get_system_account(AccountType.OUTSIDE_WORLD)
         amount = deposit_data["amount"]
+        self.check_numeric_limits(account.balance + amount)
 
         try:
             transaction = self.transaction_repository.create(TransactionType.DEPOSIT, request_control_key, request_hash, accounting_date)
@@ -195,10 +200,22 @@ class TransactionController(BaseController):
            origem AUTOMATIC e motivo SUSPICIOUS_ACTIVITY, o commit grava só
            o bloqueio, e a resposta é 422 QIT001019 (CLI-08, DAD-13).
 
+        Só depois de todas as regras, o sorteio da chance de não debitar
+        (GAM-10): concorre a transferência de até PRIZE_LIMIT_CENTS, sem
+        contar a tarifa (GAM-22), e ganha com a chance dos pontos em chance
+        da origem, relidos depois da trava (draw_prize, com o gerador
+        self.rng, TST-06). Pedido recusado nunca chega ao sorteio.
+
         Depois: a operação TRANSFER e os lançamentos, nesta ordem: AMOUNT
         −valor e FEE −tarifa na origem; AMOUNT +valor no destino; FEE
-        +tarifa na conta BANK. Tarifa zero não gera lançamento (MOV-10). A
-        resposta traz a key e o saldo novo da origem (API-10).
+        +tarifa na conta BANK. Tarifa zero não gera lançamento (MOV-10). Se
+        o sorteio saiu, mais dois: PRIZE −(valor + tarifa) na conta BANK e
+        PRIZE +(valor + tarifa) na origem (GAM-10). Em seguida, o XP do valor
+        para a origem (TRANSFER_SENT) e para o destino (TRANSFER_RECEIVED),
+        cada um com o seu n (GAM-16, GAM-17), na mesma transação: o pedido
+        repetido devolve a resposta da primeira vez e não dá XP de novo. O
+        prêmio não dá XP (GAM-23). A resposta traz a key e o saldo novo da
+        origem, já com o prêmio, se saiu (API-10).
         """
         account = self.get_owned_account(account_key, account_token)
 
@@ -226,7 +243,7 @@ class TransactionController(BaseController):
         if destination is not None:
             destination = locked_accounts[destination.id]
 
-        # Uma chamada com a mesma chave pode ter concluído enquanto esta esperava a trava.
+        # MOV-19: a primeira chamada pode ter terminado durante a espera.
         repeated_transaction = self._find_repeated(request_control_key, request_hash)
         if repeated_transaction is not None:
             return TransactionDTO.with_balance(repeated_transaction, self._balance_after(repeated_transaction, account))
@@ -259,11 +276,17 @@ class TransactionController(BaseController):
                 AccountStatusEvent.AUTOMATIC,
                 BlockReason.SUSPICIOUS_ACTIVITY,
             )
+            self.logger.info("automatic_block_ready_to_commit account_key=%s", account.account_key)
             self.session.commit()
 
             raise DailyTransferLimitReached(account_key)
 
+        prize = 0
+        if is_eligible_for_prize(amount) and draw_prize(account.points_chance, self.rng):
+            prize = amount + fee
+
         bank = self.account_repository.get_system_account(AccountType.BANK)
+        self.check_numeric_limits(destination.balance + amount)
 
         try:
             transaction = self.transaction_repository.create(TransactionType.TRANSFER, request_control_key, request_hash, accounting_date)
@@ -276,6 +299,10 @@ class TransactionController(BaseController):
 
             if fee > 0:
                 self.entry_repository.create(transaction, bank, EntryType.FEE, fee)
+
+            if prize > 0:
+                self.entry_repository.create(transaction, bank, EntryType.PRIZE, -prize)
+                self.entry_repository.create(transaction, account, EntryType.PRIZE, prize)
 
             self.gamification_controller.award_transfer_xp(account, amount, XpEvent.TRANSFER_SENT, transaction, accounting_date)
             self.gamification_controller.award_transfer_xp(destination, amount, XpEvent.TRANSFER_RECEIVED, transaction, accounting_date)

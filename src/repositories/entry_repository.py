@@ -125,3 +125,23 @@ class EntryRepository:
             .filter(Entry.transaction_id == entry.transaction_id, Entry.id != entry.id)
             .first()
         )
+
+    def get_balance_before(self, account: Account, transaction: Transaction) -> int:
+        """O saldo da conta logo antes da operação: o balance_after do último lançamento dela numa operação anterior; 0 se não tem (MOV-19).
+
+        Serve à resposta repetida de um resgate cujo líquido é 0 (passo
+        9.2): ele não tem lançamento na conta, e o saldo dela ficou o de
+        antes. Operação anterior = id menor: as operações de uma conta são
+        gravadas uma por vez, com a conta travada (MOV-05).
+        """
+        entry = (
+            self.session.query(Entry)
+            .filter(Entry.account_id == account.id, Entry.transaction_id < transaction.id)
+            .order_by(Entry.id.desc())
+            .first()
+        )
+
+        if entry is None:
+            return 0
+
+        return entry.balance_after
