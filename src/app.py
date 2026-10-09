@@ -7,6 +7,7 @@ from middlewares import (
     register_admin_token_middleware,
     register_auth_barrier_middleware,
     register_internal_token_middleware,
+    register_input_contract_middleware,
     register_request_context_middleware,
     register_request_log_writer_middleware,
     register_request_logger_middleware,
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     # token nenhum. A ordem inteira, com os porquês:
     # docs/plano/PLANO-00-indice.md, seção "Middlewares".
     # ────────────────────────────────────────────────────────────────
+    register_input_contract_middleware(application)
     register_session_manager_middleware(application)
     register_admin_token_middleware(application)
     register_internal_token_middleware(application)
