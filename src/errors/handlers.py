@@ -76,6 +76,9 @@ def register_error_handlers(application: FastAPI) -> None:
 
     @application.exception_handler(StarletteHTTPException)
     def handle_http_exception(request: Request, exception: StarletteHTTPException) -> JSONResponse:
+        if exception.status_code == 400:
+            return qi_exception_to_response(InvalidSchema("Invalid JSON request body."))
+
         if exception.status_code == 404:
             return qi_exception_to_response(NotFoundResource())
 
