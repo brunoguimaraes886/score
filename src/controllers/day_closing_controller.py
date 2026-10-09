@@ -3,6 +3,7 @@ from datetime import date
 from calculations import RANK_CDI_PERCENT, daily_rate, lot_yield
 from connectors import BcbConnector
 from controllers.base_controller import BaseController
+from controllers.gamification_controller import GamificationController
 from errors import DayAlreadyClosed, FutureAccountingDate, InvalidAccountingDate
 from models import Account, AccountStatus, AccountType, EntryType, TransactionType
 from repositories import AccountRepository, BankClockRepository, CategoryRepository, EntryRepository, LotRepository, TransactionRepository
@@ -20,6 +21,7 @@ class DayClosingController(BaseController):
         self.lot_repository = LotRepository(self.context)
         self.transaction_repository = TransactionRepository(self.context)
         self.bcb_connector = BcbConnector()
+        self.gamification_controller = GamificationController()
 
     def close_day(self, day_closing_data: dict) -> dict:
         accounting_date = day_closing_data["accounting_date"]
@@ -37,6 +39,7 @@ class DayClosingController(BaseController):
                 continue
             if cdi_rate is not None:
                 self._pay_yield(account, piggy_bank, bank, cdi_rate, closing_date)
+            self.gamification_controller.award_record_xp(account, None, closing_date)
         new_date = self.bank_clock_repository.advance(bank_clock)
         self.logger.info("day_closing_ready_to_commit accounting_date=%s", closing_date)
         self.session.commit()
