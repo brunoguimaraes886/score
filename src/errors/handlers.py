@@ -15,13 +15,13 @@ from errors.base_error import (
     NotFoundResource,
 )
 from utils.logger import get_logger
-from utils.request_context import get_request_state
+from utils.request_context import REQUEST_ID_HEADER, get_request_state
 
 
 logger = get_logger(__name__)
 
 
-def qi_exception_to_response(exception: QIException) -> JSONResponse:
+def qi_exception_to_response(exception: QIException, request: Request = None) -> JSONResponse:
     """Traduz um erro nosso para a resposta JSON que o cliente recebe.
 
     Este é o único lugar do projeto que sabe como um erro vira HTTP. Ele
@@ -29,8 +29,10 @@ def qi_exception_to_response(exception: QIException) -> JSONResponse:
     middleware request_log_writer o grava em request_log (PRD-14).
     """
     request_state = get_request_state()
+    request_id = getattr(getattr(request, "state", None), "request_id", None)
     if request_state is not None:
         request_state.error_code = exception.code
+        request_id = request_id or request_state.request_id
 
     body = {
         "title": exception.title,
@@ -38,7 +40,8 @@ def qi_exception_to_response(exception: QIException) -> JSONResponse:
         "translation": exception.translation,
         "code": exception.code,
     }
-    return JSONResponse(status_code=exception.http_status, content=body)
+    headers = {REQUEST_ID_HEADER: request_id} if request_id is not None else None
+    return JSONResponse(status_code=exception.http_status, content=body, headers=headers)
 
 
 def is_database_timeout(exception: Exception) -> bool:
@@ -72,21 +75,21 @@ def register_error_handlers(application: FastAPI) -> None:
 
     @application.exception_handler(QIException)
     def handle_qi_exception(request: Request, exception: QIException) -> JSONResponse:
-        return qi_exception_to_response(exception)
+        return qi_exception_to_response(exception, request)
 
     @application.exception_handler(StarletteHTTPException)
     def handle_http_exception(request: Request, exception: StarletteHTTPException) -> JSONResponse:
         if exception.status_code == 400:
-            return qi_exception_to_response(InvalidSchema("Invalid JSON request body."))
+            return qi_exception_to_response(InvalidSchema("Invalid JSON request body."), request)
 
         if exception.status_code == 404:
-            return qi_exception_to_response(NotFoundResource())
+            return qi_exception_to_response(NotFoundResource(), request)
 
         if exception.status_code == 405:
-            return qi_exception_to_response(MethodNotAllowed())
+            return qi_exception_to_response(MethodNotAllowed(), request)
 
         logger.error(f"HTTP {exception.status_code} em {request.url.path}: {exception.detail}")
-        return qi_exception_to_response(InternalError())
+        return qi_exception_to_response(InternalError(), request)
 
     @application.exception_handler(RequestValidationError)
     def handle_validation_error(request: Request, exception: RequestValidationError) -> JSONResponse:
@@ -105,9 +108,9 @@ def register_error_handlers(application: FastAPI) -> None:
         # caminho são todos `str`. Ele fica para a rota que declarar um
         # parâmetro tipado.
         if origin in ("query", "path"):
-            return qi_exception_to_response(InvalidParameter(description))
+            return qi_exception_to_response(InvalidParameter(description), request)
 
-        return qi_exception_to_response(InvalidSchema(description))
+        return qi_exception_to_response(InvalidSchema(description), request)
 
     @application.exception_handler(OperationalError)
     def handle_operational_error(request: Request, exception: OperationalError) -> JSONResponse:
@@ -115,12 +118,12 @@ def register_error_handlers(application: FastAPI) -> None:
         # a fecha, e fechar desfaz tudo: nada é gravado (PRD-08).
         if is_database_timeout(exception):
             logger.warning(f"Timeout do banco em {request.method} {request.url.path}")
-            return qi_exception_to_response(DatabaseTimeout())
+            return qi_exception_to_response(DatabaseTimeout(), request)
 
         logger.exception(f"Erro do banco em {request.method} {request.url.path}")
-        return qi_exception_to_response(InternalError())
+        return qi_exception_to_response(InternalError(), request)
 
     @application.exception_handler(Exception)
     def handle_unexpected_error(request: Request, exception: Exception) -> JSONResponse:
         logger.exception(f"Erro inesperado em {request.method} {request.url.path}")
-        return qi_exception_to_response(InternalError())
+        return qi_exception_to_response(InternalError(), request)

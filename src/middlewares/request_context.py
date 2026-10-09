@@ -20,6 +20,7 @@ def register_request_context_middleware(application: FastAPI) -> None:
     @application.middleware("http")
     async def create_request_context(request: Request, call_next):
         request_id = build_request_id(request.headers.get(REQUEST_ID_HEADER))
+        request.state.request_id = request_id
         set_request_id(request_id)
         start_request_state(request_id)
 
