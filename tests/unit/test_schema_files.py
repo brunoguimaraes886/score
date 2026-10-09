@@ -97,6 +97,26 @@ EXPECTED_SCHEMAS = {
         "fields": ["limit", "page", "category_key"],
         "required": [],
     },
+    "post_savings.json": {
+        "title": "PostSavings",
+        "fields": ["amount", "request_control_key", "category_key"],
+        "required": ["amount", "request_control_key"],
+    },
+    "post_redemptions.json": {
+        "title": "PostRedemptions",
+        "fields": ["amount", "request_control_key", "category_key"],
+        "required": ["amount", "request_control_key"],
+    },
+    "post_categories.json": {
+        "title": "PostCategories",
+        "fields": ["name"],
+        "required": ["name"],
+    },
+    "post_point_applications.json": {
+        "title": "PostPointApplications",
+        "fields": ["benefit", "points"],
+        "required": ["benefit", "points"],
+    },
 }  # fim de EXPECTED_SCHEMAS
 
 SCHEMA_NAMES = sorted(EXPECTED_SCHEMAS)

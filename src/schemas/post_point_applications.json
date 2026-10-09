@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "PostPointApplications",
+  "type": "object",
+  "properties": {
+    "benefit": {
+      "type": "string",
+      "enum": [
+        "FEE",
+        "CHANCE"
+      ]
+    },
+    "points": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "benefit",
+    "points"
+  ],
+  "additionalProperties": false
+}
