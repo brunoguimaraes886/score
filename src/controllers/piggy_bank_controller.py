@@ -8,12 +8,13 @@ from controllers.gamification_controller import GamificationController
 from dtos import EntryDTO, TransactionDTO
 from errors import (
     AccountNotActive,
+    CategoryDeleted,
     CategoryNotFound,
     IdempotencyKeyConflict,
     InsufficientBalance,
     InsufficientCategoryBalance,
 )
-from models import Account, AccountStatus, AccountType, Category, EntryType, Transaction, TransactionType
+from models import Account, AccountStatus, AccountType, Category, CategoryStatus, EntryType, Transaction, TransactionType
 from repositories import AccountRepository, BankClockRepository, CategoryRepository, EntryRepository, LotRepository, TransactionRepository
 from utils.request_hash import hash_request_body
 
@@ -47,8 +48,9 @@ class PiggyBankController(BaseController):
            com outro pedido, 409 QIT001014 (MOV-12);
         3. trava a conta e o cofrinho (MOV-05);
         4. a conta está ACTIVE (409 QIT001011, CLI-09);
-        5. a categoria é a "economias": sem category_key no corpo, é ela;
-           outra key, 404 QIT001021 (as outras categorias entram no 9.6);
+        5. a categoria: sem category_key no corpo, a "economias" (COF-03);
+           com category_key, uma categoria deste cofrinho (404 QIT001021)
+           que não foi excluída (409 QIT001022, API-15);
         6. o saldo da conta cobre o valor (422 QIT001015).
 
         Depois: a operação SAVE; AMOUNT −valor na conta e AMOUNT +valor no
@@ -69,7 +71,7 @@ class PiggyBankController(BaseController):
         accounting_date = self.bank_clock_repository.get_accounting_date()
         account, piggy_bank = self._lock_account_and_piggy_bank(account)
 
-        # Uma chamada com a mesma chave pode ter concluído enquanto esta esperava a trava.
+        # MOV-19: reconsultar depois da espera pela trava, antes de estado e saldo.
         repeated_transaction = self._find_repeated(request_control_key, request_hash)
         if repeated_transaction is not None:
             return self._saving_response(repeated_transaction, account)
@@ -77,7 +79,7 @@ class PiggyBankController(BaseController):
         if account.status.enumerator != AccountStatus.ACTIVE:
             raise AccountNotActive(account_key, account.status.enumerator)
 
-        category = self._get_category(piggy_bank, saving_data.get("category_key"))
+        category = self._get_active_category(piggy_bank, saving_data.get("category_key"))
         amount = saving_data["amount"]
 
         if account.balance < amount:
@@ -114,8 +116,9 @@ class PiggyBankController(BaseController):
            da primeira vez (MOV-19); com outro pedido, 409 QIT001014 (MOV-12);
         3. trava a conta e o cofrinho (MOV-05);
         4. a conta está ACTIVE (409 QIT001011, CLI-09);
-        5. a categoria é a "economias": sem category_key no corpo, é ela;
-           outra key, 404 QIT001021 (as outras categorias entram no 9.6);
+        5. a categoria: sem category_key no corpo, a "economias" (COF-03);
+           com category_key, uma categoria deste cofrinho (404 QIT001021)
+           que não foi excluída (409 QIT001022, API-15);
         6. o saldo da categoria cobre o valor (422 QIT001023, COF-07), mesmo
            que o cofrinho todo tenha o dinheiro.
 
@@ -144,7 +147,7 @@ class PiggyBankController(BaseController):
         accounting_date = self.bank_clock_repository.get_accounting_date()
         account, piggy_bank = self._lock_account_and_piggy_bank(account)
 
-        # Uma chamada com a mesma chave pode ter concluído enquanto esta esperava a trava.
+        # MOV-19: reconsultar depois da espera pela trava, antes de estado e saldo.
         repeated_transaction = self._find_repeated(request_control_key, request_hash)
         if repeated_transaction is not None:
             return self._redemption_response(repeated_transaction, account)
@@ -152,7 +155,7 @@ class PiggyBankController(BaseController):
         if account.status.enumerator != AccountStatus.ACTIVE:
             raise AccountNotActive(account_key, account.status.enumerator)
 
-        category = self._get_category(piggy_bank, redemption_data.get("category_key"))
+        category = self._get_active_category(piggy_bank, redemption_data.get("category_key"))
         amount = redemption_data["amount"]
 
         if self.category_repository.get_balance(category) < amount:
@@ -197,7 +200,7 @@ class PiggyBankController(BaseController):
 
         Bruto: o que saiu do cofrinho (os AMOUNT do cofrinho, com o sinal
         trocado). IOF e IR: os lançamentos IOF e IR da conta BANK (COF-25).
-        Líquido: bruto − IOF − IR. A consulta da
+        Líquido: bruto − IOF − IR, o que entrou na conta. A consulta da
         operação (TransactionController.get_transaction) usa o mesmo método.
         """
         bank = self.account_repository.get_system_account(AccountType.BANK)
@@ -230,7 +233,7 @@ class PiggyBankController(BaseController):
 
         1. a conta é do dono do token (404 QIT001010, R8);
         2. com category_key, a categoria existe neste cofrinho (404
-           QIT001021); nesta fase, só a "economias" (passo 9.6).
+           QIT001021), ativa ou excluída (docs/rotas.md).
 
         Pede limit + 1 linhas ao repository: se veio a linha a mais, existe
         próxima página, e ela não entra na resposta.
@@ -285,15 +288,32 @@ class PiggyBankController(BaseController):
         return yield_parts
 
     def _get_category(self, piggy_bank: Account, category_key: str) -> Category:
-        """A categoria do pedido: sem category_key, a "economias" (COF-03).
+        """A categoria do pedido, ativa ou excluída: sem category_key, a "economias" (COF-03).
 
-        Nesta fase o cofrinho só tem a "economias": outra key responde 404
-        QIT001021 (passo 9.6).
+        Com category_key, só uma categoria deste cofrinho: a de outro
+        cofrinho responde como se não existisse, 404 QIT001021 (R8).
         """
-        category = self.category_repository.get_default(piggy_bank)
+        if category_key is None:
+            return self.category_repository.get_default(piggy_bank)
 
-        if category_key is not None and category_key != category.category_key:
+        category = self.category_repository.get_by_key(piggy_bank, category_key)
+
+        if category is None:
             raise CategoryNotFound(category_key)
+
+        return category
+
+    def _get_active_category(self, piggy_bank: Account, category_key: str) -> Category:
+        """A categoria do pedido (_get_category), que precisa estar ativa: excluída responde 409 QIT001022 (API-15).
+
+        Guardar e resgatar usam esta; o extrato do cofrinho usa a
+        _get_category, que aceita a excluída. Não existe mover dinheiro
+        entre categorias: resgata de uma e guarda na outra (COF-19).
+        """
+        category = self._get_category(piggy_bank, category_key)
+
+        if category.status.enumerator == CategoryStatus.DELETED:
+            raise CategoryDeleted(category.category_key)
 
         return category
 
