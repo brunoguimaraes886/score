@@ -1,4 +1,4 @@
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi import status as http_status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -14,7 +14,7 @@ DEFAULT_PAGE = 0
 
 
 class CategoryResource:
-    """A porta HTTP das categorias do cofrinho: criar e listar (consultar e excluir entram no 9.5).
+    """A porta HTTP das categorias do cofrinho: criar, listar, consultar e excluir.
 
     Sem regra de negócio, sem SQL e sem nada guardado no self (ARQ-02). O
     token da conta chega no cabeçalho ACCOUNT-TOKEN (API-16); quem o
@@ -55,3 +55,18 @@ class CategoryResource:
             content=jsonable_encoder(page_envelope),
             status_code=http_status.HTTP_200_OK,
         )
+
+    def on_get_by_key(self, account_key: str, category_key: str, request: Request) -> JSONResponse:
+        controller = CategoryController()
+        category = controller.get_category(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER), category_key)
+
+        return JSONResponse(
+            content=jsonable_encoder(category),
+            status_code=http_status.HTTP_200_OK,
+        )
+
+    def on_delete_by_key(self, account_key: str, category_key: str, request: Request) -> Response:
+        controller = CategoryController()
+        controller.delete_category(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER), category_key)
+
+        return Response(status_code=http_status.HTTP_204_NO_CONTENT)
