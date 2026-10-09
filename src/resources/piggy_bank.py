@@ -25,3 +25,13 @@ class PiggyBankResource:
             content=jsonable_encoder(transaction),
             status_code=http_status.HTTP_201_CREATED,
         )
+
+    @SchemaHandler.validate("post_redemptions.json")
+    def on_post_redemption(self, account_key: str, payload: dict, request: Request) -> JSONResponse:
+        controller = PiggyBankController()
+        transaction = controller.redeem(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER), payload)
+
+        return JSONResponse(
+            content=jsonable_encoder(transaction),
+            status_code=http_status.HTTP_201_CREATED,
+        )
