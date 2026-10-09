@@ -12,7 +12,7 @@ from middlewares import (
     register_request_logger_middleware,
     register_session_manager_middleware,
 )
-from resources import AccountResource, CustomerResource, HealthCheckResource, InternalResource
+from resources import AccountResource, CustomerResource, HealthCheckResource, InternalResource, TransactionResource
 from utils.logger import setup_logging
 
 
@@ -59,6 +59,7 @@ def create_app() -> FastAPI:
     customer_resource = CustomerResource()
     account_resource = AccountResource()
     internal_resource = InternalResource()
+    transaction_resource = TransactionResource()
 
     application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
     application.add_api_route(
@@ -75,6 +76,9 @@ def create_app() -> FastAPI:
     application.add_api_route("/customers/{customer_key}/accounts", account_resource.on_post_account, methods=["POST"])
     application.add_api_route("/accounts/{account_key}", account_resource.on_get_by_key, methods=["GET"])
     application.add_api_route("/accounts/{account_key}", account_resource.on_delete_by_key, methods=["DELETE"])
+
+    # Dinheiro
+    application.add_api_route("/accounts/{account_key}/deposits", transaction_resource.on_post_deposit, methods=["POST"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])
