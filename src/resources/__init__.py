@@ -3,3 +3,4 @@ from resources.customer import CustomerResource
 from resources.account import AccountResource
 from resources.internal import InternalResource
 from resources.transaction import TransactionResource
+from resources.gamification import GamificationResource

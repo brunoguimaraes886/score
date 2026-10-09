@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from calculations import calculate_fee
 from constants import DAILY_TRANSFER_LIMIT
 from controllers.base_controller import BaseController
+from controllers.gamification_controller import GamificationController
 from dtos import EntryDTO, TransactionDTO
 from errors import (
     AccountNotActive,
@@ -16,7 +17,7 @@ from errors import (
     SameAccountTransfer,
     TransactionNotFound,
 )
-from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Entry, EntryType, Transaction, TransactionType
+from models import Account, AccountStatus, AccountStatusEvent, AccountType, BlockReason, Entry, EntryType, Transaction, TransactionType, XpEvent
 from repositories import AccountRepository, BankClockRepository, DepositRepository, EntryRepository, TransactionRepository
 from utils.document_number import FORMATTED_CPF_LENGTH, is_valid_cnpj, is_valid_cpf
 from utils.request_hash import hash_request_body
@@ -42,6 +43,7 @@ class TransactionController(BaseController):
         self.deposit_repository = DepositRepository(self.context)
         self.entry_repository = EntryRepository(self.context)
         self.transaction_repository = TransactionRepository(self.context)
+        self.gamification_controller = GamificationController()
 
     def deposit(self, account_key: str, deposit_data: dict) -> dict:
         """Depósito: o dinheiro vem da conta OUTSIDE_WORLD (MOV-07, MOV-15, MOV-16). As regras, nesta ordem:
@@ -182,8 +184,8 @@ class TransactionController(BaseController):
         6. o destino existe e é de cliente (404 QIT001017);
         7. o destino está ACTIVE (409 QIT001018, CLI-09);
         8. o saldo da origem cobre valor + tarifa (422 QIT001015, MOV-01,
-           MOV-02); a tarifa é calculate_fee(valor, 0): os pontos entram
-           no passo 8.7;
+           MOV-02); a tarifa é calculate_fee(valor, pontos em tarifa da
+           origem), com os pontos relidos depois da trava (GAM-09);
         9. a origem enviou menos de DAILY_TRANSFER_LIMIT transferências no
            dia contábil, contadas desde o último evento ACTIVE da conta
            (abertura ou desbloqueio). Na 11ª: a conta fica BLOCKED, com
@@ -239,7 +241,7 @@ class TransactionController(BaseController):
             raise DestinationAccountNotActive(destination_account_key)
 
         amount = transfer_data["amount"]
-        fee = calculate_fee(amount, 0)
+        fee = calculate_fee(amount, account.points_fee)
 
         if account.balance < amount + fee:
             raise InsufficientBalance(account_key)
@@ -271,6 +273,9 @@ class TransactionController(BaseController):
 
             if fee > 0:
                 self.entry_repository.create(transaction, bank, EntryType.FEE, fee)
+
+            self.gamification_controller.award_transfer_xp(account, amount, XpEvent.TRANSFER_SENT, transaction, accounting_date)
+            self.gamification_controller.award_transfer_xp(destination, amount, XpEvent.TRANSFER_RECEIVED, transaction, accounting_date)
 
             transaction_dto = TransactionDTO.with_balance(transaction, account.balance)
             self.logger.info("operation_ready_to_commit transaction_key=%s", transaction.transaction_key)

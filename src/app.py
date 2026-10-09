@@ -12,7 +12,7 @@ from middlewares import (
     register_request_logger_middleware,
     register_session_manager_middleware,
 )
-from resources import AccountResource, CustomerResource, HealthCheckResource, InternalResource, TransactionResource
+from resources import AccountResource, CustomerResource, GamificationResource, HealthCheckResource, InternalResource, TransactionResource
 from utils.logger import setup_logging
 
 
@@ -60,6 +60,7 @@ def create_app() -> FastAPI:
     account_resource = AccountResource()
     internal_resource = InternalResource()
     transaction_resource = TransactionResource()
+    gamification_resource = GamificationResource()
 
     application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
     application.add_api_route(
@@ -83,6 +84,11 @@ def create_app() -> FastAPI:
     application.add_api_route("/accounts/{account_key}/transfers", transaction_resource.on_post_transfer, methods=["POST"])
     application.add_api_route("/accounts/{account_key}/transactions/{transaction_key}", transaction_resource.on_get_transaction, methods=["GET"])
     application.add_api_route("/accounts/{account_key}/entries", transaction_resource.on_get_entries, methods=["GET"])
+
+    # Gamificação
+    application.add_api_route("/accounts/{account_key}/gamification", gamification_resource.on_get, methods=["GET"])
+    application.add_api_route("/accounts/{account_key}/point_applications", gamification_resource.on_post_point_application, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}/point_resets", gamification_resource.on_post_point_reset, methods=["POST"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])
