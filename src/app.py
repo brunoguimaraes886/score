@@ -87,6 +87,8 @@ def create_app() -> FastAPI:
 
     # Gamificação
     application.add_api_route("/accounts/{account_key}/gamification", gamification_resource.on_get, methods=["GET"])
+    application.add_api_route("/accounts/{account_key}/point_applications", gamification_resource.on_post_point_application, methods=["POST"])
+    application.add_api_route("/accounts/{account_key}/point_resets", gamification_resource.on_post_point_reset, methods=["POST"])
 
     # Rotas internas (API-13): INTERNAL-TOKEN e ADMIN-TOKEN
     application.add_api_route("/internal/accounts/{account_key}/blocks", internal_resource.on_post_block, methods=["POST"])

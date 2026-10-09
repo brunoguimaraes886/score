@@ -3,7 +3,8 @@ from datetime import date
 from calculations import XpGain, gain_record_xp, gain_transfer_xp, record_whole_reais
 from controllers.base_controller import BaseController
 from dtos import GamificationDTO
-from models import Account, Transaction, XpEvent
+from errors import AccountNotActive, NotEnoughFreePoints
+from models import Account, AccountStatus, PointsEvent, Transaction, XpEvent
 from repositories import AccountRepository, GamificationRepository
 
 
@@ -29,6 +30,76 @@ class GamificationController(BaseController):
         account = self.get_owned_account(account_key, account_token)
 
         return GamificationDTO.obj_to_dict(account)
+
+    def apply_points(self, account_key: str, account_token: str, point_application_data: dict) -> dict:
+        """Aplicar +Y: tira Y pontos dos livres e põe num benefício (GAM-06, GAM-07, GAM-21). As regras, nesta ordem:
+
+        1. a conta é do dono do token (404 QIT001010, R8);
+        2. trava a conta (MOV-05): os pontos são relidos depois da trava, e
+           uma transferência ao mesmo tempo, que pode subir o nível, espera
+           ou é esperada;
+        3. a conta não está CLOSED (409 QIT001011); bloqueada aplica (CLI-09);
+        4. os pontos pedidos cabem nos pontos livres (422 QIT001027).
+
+        Depois: os pontos saem dos livres e entram em points_fee (FEE) ou
+        em points_chance (CHANCE), e o evento APPLY com o benefício e os
+        pontos. A resposta é a gamificação atualizada.
+        """
+        account = self.get_owned_account(account_key, account_token)
+        account = self.account_repository.lock_accounts([account])[0]
+
+        if account.status.enumerator == AccountStatus.CLOSED:
+            raise AccountNotActive(account_key, account.status.enumerator)
+
+        benefit = point_application_data["benefit"]
+        points = point_application_data["points"]
+
+        if points > account.points_free:
+            raise NotEnoughFreePoints(points, account.points_free)
+
+        points_fee = account.points_fee
+        points_chance = account.points_chance
+
+        if benefit == PointsEvent.FEE:
+            points_fee = points_fee + points
+        else:
+            points_chance = points_chance + points
+
+        self.gamification_repository.update_points(account, account.points_free - points, points_fee, points_chance)
+        self.gamification_repository.create_points_event(account, PointsEvent.APPLY, points, benefit)
+
+        gamification_dto = GamificationDTO.obj_to_dict(account)
+        self.session.commit()
+
+        return gamification_dto
+
+    def reset_points(self, account_key: str, account_token: str) -> dict:
+        """Zerar tudo: os pontos em tarifa e em chance voltam a livres (GAM-07, GAM-21). As regras, nesta ordem:
+
+        1. a conta é do dono do token (404 QIT001010, R8);
+        2. trava a conta (MOV-05);
+        3. a conta não está CLOSED (409 QIT001011); bloqueada zera (CLI-09).
+
+        Depois: points_fee e points_chance vão a 0, os livres somam os dois,
+        e o evento RESET com quantos pontos voltaram (0 quando nada estava
+        aplicado: zerar de novo deixa os pontos como estão). A resposta é a
+        gamificação atualizada.
+        """
+        account = self.get_owned_account(account_key, account_token)
+        account = self.account_repository.lock_accounts([account])[0]
+
+        if account.status.enumerator == AccountStatus.CLOSED:
+            raise AccountNotActive(account_key, account.status.enumerator)
+
+        returned_points = account.points_fee + account.points_chance
+
+        self.gamification_repository.update_points(account, account.points_free + returned_points, 0, 0)
+        self.gamification_repository.create_points_event(account, PointsEvent.RESET, returned_points)
+
+        gamification_dto = GamificationDTO.obj_to_dict(account)
+        self.session.commit()
+
+        return gamification_dto
 
     def award_transfer_xp(
         self,
