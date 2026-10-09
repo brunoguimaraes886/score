@@ -184,8 +184,8 @@ class TransactionController(BaseController):
         6. o destino existe e é de cliente (404 QIT001017);
         7. o destino está ACTIVE (409 QIT001018, CLI-09);
         8. o saldo da origem cobre valor + tarifa (422 QIT001015, MOV-01,
-           MOV-02); a tarifa é calculate_fee(valor, 0): os pontos entram
-           no passo 8.7;
+           MOV-02); a tarifa é calculate_fee(valor, pontos em tarifa da
+           origem), com os pontos relidos depois da trava (GAM-09);
         9. a origem enviou menos de DAILY_TRANSFER_LIMIT transferências no
            dia contábil, contadas desde o último evento ACTIVE da conta
            (abertura ou desbloqueio). Na 11ª: a conta fica BLOCKED, com
@@ -241,7 +241,7 @@ class TransactionController(BaseController):
             raise DestinationAccountNotActive(destination_account_key)
 
         amount = transfer_data["amount"]
-        fee = calculate_fee(amount, 0)
+        fee = calculate_fee(amount, account.points_fee)
 
         if account.balance < amount + fee:
             raise InsufficientBalance(account_key)
