@@ -309,6 +309,30 @@ class TransactionController(BaseController):
 
         return TransactionDTO.obj_to_dict(transaction, entries)
 
+    def list_entries(self, account_key: str, account_token: str, limit: int, offset: int) -> dict:
+        """Uma página do extrato da conta principal, só para o dono (MOV-04, MOV-14). Não grava nada.
+
+        Pede limit + 1 linhas ao repository: se veio a linha a mais, existe
+        próxima página, e ela não entra na resposta.
+        """
+        account = self.get_owned_account(account_key, account_token)
+
+        rows = self.entry_repository.list_page(account, limit, offset)
+
+        is_last_page = True
+        if len(rows) > limit:
+            is_last_page = False
+            rows = rows[:-1]
+
+        entries = []
+        for entry, transaction in rows:
+            entries.append(self._entry_to_dict(entry, transaction))
+
+        return {
+            "entries_list_dto": entries,
+            "is_last_page": is_last_page,
+        }
+
     def _find_repeated(self, request_control_key: str, request_hash: str) -> Transaction:
         """A operação já gravada com esta chave e o mesmo pedido; None quando a chave é nova (MOV-12, MOV-19).
 

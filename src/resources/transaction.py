@@ -8,6 +8,11 @@ from controllers import TransactionController
 from utils.schema_handler import SchemaHandler
 
 
+# MOV-04: o extrato começa na página 0, com 10 itens, quando a query string não diz.
+DEFAULT_LIMIT = 10
+DEFAULT_PAGE = 0
+
+
 class TransactionResource:
     """A porta HTTP do dinheiro: depósito, saque, transferência, consulta e extrato.
 
@@ -52,5 +57,30 @@ class TransactionResource:
 
         return JSONResponse(
             content=jsonable_encoder(transaction),
+            status_code=http_status.HTTP_200_OK,
+        )
+
+    @SchemaHandler.validate_query_params("get_entries.json")
+    def on_get_entries(self, account_key: str, request: Request) -> JSONResponse:
+        """Uma página do extrato. O schema get_entries.json já garantiu que limit e page são dígitos."""
+        controller = TransactionController()
+
+        query_params = request.query_params
+        limit = int(query_params.get("limit", DEFAULT_LIMIT))
+        page = int(query_params.get("page", DEFAULT_PAGE))
+        offset = page * limit
+
+        entries_page = controller.list_entries(account_key, request.headers.get(ACCOUNT_TOKEN_HEADER), limit, offset)
+
+        # O envelope da página fala de limit e page, vocabulário de HTTP: quem o monta é o resource, como no base.
+        page_envelope = {
+            "data": entries_page["entries_list_dto"],
+            "limit": limit,
+            "page": page,
+            "is_last_page": entries_page["is_last_page"],
+        }
+
+        return JSONResponse(
+            content=jsonable_encoder(page_envelope),
             status_code=http_status.HTTP_200_OK,
         )

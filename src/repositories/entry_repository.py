@@ -80,3 +80,21 @@ class EntryRepository:
             )
             .one()
         )
+
+    def list_page(self, account: Account, limit: int, offset: int) -> list:
+        """Uma página do extrato da conta: pares (lançamento, operação), mais recente primeiro (MOV-14).
+
+        Ordem: created_at decrescente e, no empate (os lançamentos de uma
+        operação nascem no mesmo instante), o id decrescente. Pede limit + 1
+        linhas: a linha a mais só diz ao controller que existe próxima
+        página. O índice entry_account_created_at_id_idx cobre esta consulta.
+        """
+        return (
+            self.session.query(Entry, Transaction)
+            .join(Transaction, Transaction.id == Entry.transaction_id)
+            .filter(Entry.account_id == account.id)
+            .order_by(Entry.created_at.desc(), Entry.id.desc())
+            .limit(limit + 1)
+            .offset(offset)
+            .all()
+        )
