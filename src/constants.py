@@ -14,6 +14,29 @@ SERVICE_NAME = os.environ.get("SERVICE_NAME", "bootcamp-api")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN")
 
+# PRD-07, PRD-13: o segundo token das rotas /internal (virada do dia,
+# bloquear e desbloquear conta). Sem padrão aqui, como o INTERNAL_TOKEN:
+# o padrão de estudo mora no docker-compose.yml.
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN")
+
+# Os nomes dos cabeçalhos de token (API-04, API-16, PRD-13).
+INTERNAL_TOKEN_HEADER = "INTERNAL-TOKEN"
+ACCOUNT_TOKEN_HEADER = "ACCOUNT-TOKEN"
+ADMIN_TOKEN_HEADER = "ADMIN-TOKEN"
+
+# API-13: todo caminho que começa aqui pede também o ADMIN-TOKEN.
+INTERNAL_PREFIX = "/internal"
+
+# PRD-10: AUTH_FAILURE_LIMIT erros de token do mesmo IP dentro de
+# AUTH_FAILURE_WINDOW_MINUTES minutos fazem a API responder 429.
+AUTH_FAILURE_LIMIT = int(os.environ.get("AUTH_FAILURE_LIMIT", "10"))
+AUTH_FAILURE_WINDOW_MINUTES = int(os.environ.get("AUTH_FAILURE_WINDOW_MINUTES", "15"))
+
+# PRD-08: quanto o banco espera, em milissegundos, por uma trava
+# (lock_timeout) e por um comando (statement_timeout) antes de desistir.
+DB_LOCK_TIMEOUT_MS = int(os.environ.get("DB_LOCK_TIMEOUT_MS", "5000"))
+DB_STATEMENT_TIMEOUT_MS = int(os.environ.get("DB_STATEMENT_TIMEOUT_MS", "5000"))
+
 # A API de boletos: o serviço de fora que este projeto chama pra emitir
 # uma cobrança (veja src/connectors/). O endereço vem do ambiente, como
 # tudo aqui — na sua máquina ele aponta pro mock server do sábado 4; em
@@ -36,7 +59,7 @@ BYPASS_ENDPOINTS = [
     "/health_check",
 ]
 
-REQUIRED_VARIABLES = ["DATABASE_URL", "INTERNAL_TOKEN"]
+REQUIRED_VARIABLES = ["DATABASE_URL", "INTERNAL_TOKEN", "ADMIN_TOKEN"]
 
 
 def check_variables():
