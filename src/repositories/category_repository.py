@@ -1,8 +1,10 @@
 from datetime import datetime
 from uuid import uuid4
 
+from sqlalchemy import func
+
 from database import Context
-from models import Account, Category, CategoryStatus, CategoryStatusEvent
+from models import Account, Category, CategoryStatus, CategoryStatusEvent, Entry
 
 
 # COF-03: o nome da categoria padrão, que nasce com o cofrinho.
@@ -40,3 +42,14 @@ class CategoryRepository:
             .filter(Category.account_id == piggy_bank.id, Category.is_default.is_(True))
             .first()
         )
+
+    def get_balance(self, category: Category) -> int:
+        """O saldo da categoria: a soma dos lançamentos do cofrinho nela, em centavos (COF-05, COF-23).
+
+        Só os lançamentos do cofrinho têm category_id. O PostgreSQL devolve
+        a soma de BIGINT como NUMERIC: o int() a traz de volta para centavos
+        inteiros (DAD-08).
+        """
+        total = self.session.query(func.coalesce(func.sum(Entry.amount), 0)).filter(Entry.category_id == category.id).scalar()
+
+        return int(total)

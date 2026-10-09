@@ -7,3 +7,4 @@ from repositories.entry_repository import EntryRepository
 from repositories.deposit_repository import DepositRepository
 from repositories.bank_clock_repository import BankClockRepository
 from repositories.gamification_repository import GamificationRepository
+from repositories.lot_repository import LotRepository
