@@ -406,6 +406,7 @@ class CdiUnavailable(QIException):
         translation = "O Banco Central não respondeu a taxa do CDI a tempo."
         super().__init__(title, self.code, http_status, description, translation)
 
+
 class NumericLimitExceeded(QIException):
     code = "QIT001032"
 
