@@ -1,18 +1,12 @@
-from calculations import MAX_LEVEL, level_cost, next_level_n
+from calculations import MAX_LEVEL, RANK_CDI_PERCENT, level_cost, next_level_n
 from calculations.fee import FULL_FEE_TENTHS_OF_PERCENT
-from models import Account, PiggyRank
+from models import Account
 
 
-# COF-02: quanto o cofrinho rende, em % do CDI, pelo ranque. Em texto,
-# como todo percentual de docs/rotas.md ("Formatos").
-CDI_PERCENT_BY_RANK = {
-    PiggyRank.DEFAULT: "100",
-    PiggyRank.BRONZE: "102.5",
-    PiggyRank.SILVER: "105",
-    PiggyRank.GOLD: "110",
-    PiggyRank.PLATINUM: "115",
-    PiggyRank.DIAMOND: "120",
-}
+# COF-02: quanto o cofrinho rende, em % do CDI, pelo ranque. Os números
+# moram em src/calculations/ranks.py, em texto, como todo percentual de
+# docs/rotas.md ("Formatos").
+CDI_PERCENT_BY_RANK = RANK_CDI_PERCENT
 
 # GAM-09, GAM-10: cada ponto vale um décimo de ponto percentual.
 TENTHS_PER_PERCENT = 10
