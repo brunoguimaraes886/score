@@ -7,6 +7,7 @@ from middlewares import (
     register_admin_token_middleware,
     register_internal_token_middleware,
     register_request_context_middleware,
+    register_request_log_writer_middleware,
     register_request_logger_middleware,
     register_session_manager_middleware,
 )
@@ -28,11 +29,12 @@ def create_app() -> FastAPI:
     # linhas de baixo para cima e a requisição atravessa assim, de fora
     # para dentro:
     #
-    #     request_context   nome da requisição e RequestState
-    #     request_logger    ENTROU / SAIU na saída padrão
-    #     internal_token    403 sem o INTERNAL-TOKEN certo (API-04)
-    #     admin_token       403 em /internal sem o ADMIN-TOKEN (PRD-13)
-    #     session_manager   sessão de banco; o mais interno de todos
+    #     request_context      nome da requisição e RequestState
+    #     request_logger       ENTROU / SAIU na saída padrão
+    #     request_log_writer   uma linha em request_log (PRD-06)
+    #     internal_token       403 sem o INTERNAL-TOKEN certo (API-04)
+    #     admin_token          403 em /internal sem o ADMIN-TOKEN (PRD-13)
+    #     session_manager      sessão de banco; o mais interno de todos
     #
     # A ordem inteira, com os porquês: docs/plano/PLANO-00-indice.md,
     # seção "Middlewares".
@@ -40,6 +42,7 @@ def create_app() -> FastAPI:
     register_session_manager_middleware(application)
     register_admin_token_middleware(application)
     register_internal_token_middleware(application)
+    register_request_log_writer_middleware(application)
     register_request_logger_middleware(application)
     register_request_context_middleware(application)
 
