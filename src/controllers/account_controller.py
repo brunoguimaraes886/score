@@ -1,6 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 
 from controllers.base_controller import BaseController
+from controllers.yield_controller import YieldController
 from dtos import AccountDTO
 from errors import (
     AccountNotActive,
@@ -46,11 +47,12 @@ class AccountController(BaseController):
         return account_dto
 
     def get_account(self, account_key: str, account_token: str) -> dict:
-        """A conta, só para o dono; também bloqueada ou encerrada (CLI-05). Não grava nada."""
         account = self.get_owned_account(account_key, account_token)
+        yields = YieldController()
+        account, piggy_bank, accounting_date = yields.lock_snapshot(account)
         customer = self.customer_repository.get_by_id(account.customer_id)
-        piggy_bank = self.account_repository.get_piggy_bank(account)
-        return AccountDTO.obj_to_dict(account, customer, piggy_bank)
+        summary = yields.account_summary(piggy_bank, accounting_date)
+        return AccountDTO.obj_to_dict(account, customer, piggy_bank, summary)
 
     def block_account(self, account_key: str, reason: str) -> None:
         account = self._get_locked_customer_account(account_key)

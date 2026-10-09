@@ -10,7 +10,7 @@ class CategoryDTO:
         return {"category_key": category.category_key}
 
     @staticmethod
-    def obj_to_dict(category: Category, balance: int) -> dict:
+    def obj_to_dict(category: Category, balance: int, yield_summary: dict) -> dict:
         """A categoria na lista e na consulta: o saldo em centavos (COF-05) e o estado público em maiúsculas, ACTIVE ou DELETED (API-15, docs/rotas.md)."""
         return {
             "category_key": category.category_key,
@@ -19,4 +19,5 @@ class CategoryDTO:
             "status": category.status.enumerator,
             "balance": balance,
             "created_at": category.created_at.isoformat(),
+            **yield_summary,
         }

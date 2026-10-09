@@ -6,7 +6,7 @@ from uuid import uuid4
 from tests.utils import DbUtils, ObjectGenerator, RequestGenerator
 
 
-ACCOUNT_FIELDS = ["account_key", "balance", "created_at", "customer_key", "piggy_bank_balance", "status"]
+ACCOUNT_FIELDS = ["account_key", "balance", "created_at", "customer_key", "piggy_bank_balance", "piggy_bank_gross_yield", "piggy_bank_net_yield", "status", "yield_accounting_date"]
 
 
 def assert_no_internal_id(body: dict) -> None:

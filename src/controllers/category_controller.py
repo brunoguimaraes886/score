@@ -1,6 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 
 from controllers.base_controller import BaseController
+from controllers.yield_controller import YieldController
 from dtos import CategoryDTO
 from errors import (
     AccountNotActive,
@@ -62,48 +63,23 @@ class CategoryController(BaseController):
         return category_dto
 
     def list_categories(self, account_key: str, account_token: str, limit: int, offset: int) -> dict:
-        """Uma página das categorias ativas do cofrinho, com o saldo de cada uma, na ordem em que foram criadas (COF-05, API-15). Não grava nada.
-
-        1. a conta é do dono do token (404 QIT001010, R8); encerrada também
-           lê (CLI-05).
-
-        Pede limit + 1 linhas ao repository: se veio a linha a mais, existe
-        próxima página, e ela não entra na resposta.
-        """
         account = self.get_owned_account(account_key, account_token)
-        piggy_bank = self.account_repository.get_piggy_bank(account)
-
+        yields = YieldController()
+        account, piggy_bank, accounting_date = yields.lock_snapshot(account)
         rows = self.category_repository.list_active_page(piggy_bank, limit, offset)
-
-        is_last_page = True
-        if len(rows) > limit:
-            is_last_page = False
-            rows = rows[:-1]
-
-        categories = []
-        for category in rows:
-            categories.append(CategoryDTO.obj_to_dict(category, self.category_repository.get_balance(category)))
-
-        return {
-            "categories_list_dto": categories,
-            "is_last_page": is_last_page,
-        }
+        is_last_page = len(rows) <= limit
+        rows = rows[:limit]
+        categories = [CategoryDTO.obj_to_dict(category, self.category_repository.get_balance(category),
+                      yields.category_summary(category, accounting_date)) for category in rows]
+        return {"categories_list_dto": categories, "is_last_page": is_last_page}
 
     def get_category(self, account_key: str, account_token: str, category_key: str) -> dict:
-        """Uma categoria do cofrinho, ativa ou excluída, com o saldo (COF-05, API-15). Não grava nada. As regras, nesta ordem:
-
-        1. a conta é do dono do token (404 QIT001010, R8);
-        2. a categoria existe neste cofrinho (404 QIT001021): a de outro
-           cofrinho responde como se não existisse (R8).
-
-        Excluída sai com status DELETED (API-15).
-        """
         account = self.get_owned_account(account_key, account_token)
-        piggy_bank = self.account_repository.get_piggy_bank(account)
-
+        yields = YieldController()
+        account, piggy_bank, accounting_date = yields.lock_snapshot(account)
         category = self._get_category(piggy_bank, category_key)
-
-        return CategoryDTO.obj_to_dict(category, self.category_repository.get_balance(category))
+        return CategoryDTO.obj_to_dict(category, self.category_repository.get_balance(category),
+                                       yields.category_summary(category, accounting_date))
 
     def delete_category(self, account_key: str, account_token: str, category_key: str) -> None:
         """Exclui uma categoria do cofrinho (COF-04, API-15). As regras, nesta ordem:

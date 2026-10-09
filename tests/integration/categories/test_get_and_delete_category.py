@@ -12,7 +12,7 @@ from uuid import uuid4
 from tests.utils import DbUtils, ObjectGenerator, PayloadGenerator, RequestGenerator
 
 
-CATEGORY_FIELDS = ["balance", "category_key", "created_at", "is_default", "name", "status"]
+CATEGORY_FIELDS = ["balance", "category_key", "created_at", "gross_yield", "is_default", "name", "net_yield", "status", "yield_accounting_date"]
 
 
 def create_category(account: dict, name: str) -> str:
