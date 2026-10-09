@@ -2,3 +2,7 @@ from repositories.request_log_repository import RequestLogRepository
 from repositories.customer_repository import CustomerRepository
 from repositories.account_repository import AccountRepository
 from repositories.category_repository import CategoryRepository
+from repositories.transaction_repository import TransactionRepository
+from repositories.entry_repository import EntryRepository
+from repositories.deposit_repository import DepositRepository
+from repositories.bank_clock_repository import BankClockRepository
