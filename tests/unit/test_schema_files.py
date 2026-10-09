@@ -117,6 +117,16 @@ EXPECTED_SCHEMAS = {
         "fields": ["benefit", "points"],
         "required": ["benefit", "points"],
     },
+    "post_day_closings.json": {
+        "title": "PostDayClosings",
+        "fields": ["accounting_date"],
+        "required": ["accounting_date"],
+    },
+    "post_blocks.json": {
+        "title": "PostBlocks",
+        "fields": ["reason"],
+        "required": ["reason"],
+    },
 }  # fim de EXPECTED_SCHEMAS
 
 SCHEMA_NAMES = sorted(EXPECTED_SCHEMAS)

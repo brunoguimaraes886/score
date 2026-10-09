@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "PostBlocks",
+  "type": "object",
+  "properties": {
+    "reason": {
+      "type": "string",
+      "enum": [
+        "SUSPICIOUS_ACTIVITY",
+        "JUDICIAL_ORDER",
+        "CUSTOMER_REQUEST",
+        "MANUAL_REVIEW"
+      ]
+    }
+  },
+  "required": [
+    "reason"
+  ],
+  "additionalProperties": false
+}
