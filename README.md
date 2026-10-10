@@ -12,16 +12,27 @@ contas são travadas antes de atualizar o saldo, que nunca pode ficar negativo.
 
 ## Subir o projeto
 
-No Windows, instale Docker Desktop com suporte a containers Linux. Para
-rodar os testes localmente, tenha também Python 3.11. Execute os comandos
-abaixo no PowerShell, na raiz do repositório.
+Tenha Docker com Compose e suporte a containers Linux. No Windows e no
+macOS, use Docker Desktop; no Linux, Docker Engine com o plugin Compose
+também atende. Para rodar os testes localmente, tenha também Python 3.11.
+Execute os comandos um por vez, na raiz do repositório.
 
-```powershell
+```text
 docker compose up -d --build --wait
 ```
 
-O Compose fornece os valores padrão e **não exige `.env`**. O comando
-reconstrói as imagens e espera os health checks antes de terminar.
+Esse comando é o mesmo nos três sistemas e inicia API, PostgreSQL e
+Mockserver juntos; não é necessário subir o Mockserver separadamente.
+O Compose fornece os valores padrão e **não exige `.env`**.
+
+- `-d`: executa os containers em segundo plano, liberando o terminal.
+- `--build`: constrói as imagens antes de iniciar, usando o cache quando possível.
+- `--wait`: espera os serviços ficarem em execução e, onde há health check, saudáveis.
+
+`docker compose up` também funciona, mas mantém o terminal mostrando logs.
+Para o ciclo de desenvolvimento e testes, o comando acima atualiza as
+imagens e aguarda a inicialização. O Mockserver não tem health check;
+a suíte aguarda suas respostas antes de programá-lo.
 
 | Serviço | Endereço local padrão | Papel |
 |---|---|---|
@@ -33,44 +44,84 @@ Na execução da entrega e da suíte, o CDI vem do Mockserver. Não é necessár
 acesso ao Banco Central. O script de atualização dos dados em `scripts/`
 é uma operação separada e não roda no Compose nem nos testes.
 
-Confira a API:
+Confira os containers e faça uma requisição à API. Nos exemplos deste
+README, use `curl.exe` no Windows/PowerShell no lugar de `curl`, para evitar
+o alias do PowerShell. No Linux, macOS e Git Bash, use `curl`.
 
-```powershell
+```text
 docker compose ps
-curl.exe -i http://127.0.0.1:3000/health_check
+curl -i http://127.0.0.1:3000/health_check
 ```
 
-O health check responde **204, sem corpo**, e não consulta o banco. Ele
-mede se a API está de pé; não certifica a disponibilidade do PostgreSQL.
+`ps` mostra o estado e as portas dos containers. O `curl` faz a requisição;
+`-i` inclui o status HTTP e os cabeçalhos na saída. O health check responde
+**204, sem corpo**, e não consulta o banco. Ele mede se a API está de pé;
+não certifica a disponibilidade do PostgreSQL. Os endereços `127.0.0.1`
+da tabela significam este computador nos três sistemas.
 
 ## Testes e lint
 
-Prepare o ambiente de testes uma vez:
+Os testes rodam no Python da sua máquina, contra os serviços do Docker.
+Prepare um ambiente virtual uma vez em cada máquina, com Python 3.11:
 
-```powershell
+```text
 python -m venv .venv
-./.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
 ```
 
-Antes de testar, ponha a imagem da API em dia e aguarde sua disponibilidade:
+Se o Python 3.11 estiver disponível como `python3` ou `python3.11`, use
+esse nome no comando de criação. Confira a versão do executável escolhido
+com `--version`. O `.venv` deve ser criado no próprio sistema; não copie
+essa pasta de uma máquina para outra.
 
-```powershell
+Ative o ambiente no terminal em que vai instalar as dependências e testar.
+A ativação varia conforme o terminal:
+
+| Terminal | Ativar o `.venv` |
+|---|---|
+| Windows — PowerShell | `./.venv/Scripts/Activate.ps1` |
+| Windows — Prompt de Comando (CMD) | `.venv\Scripts\activate.bat` |
+| Windows — Git Bash | `source .venv/Scripts/activate` |
+| Linux/macOS — Bash ou Zsh | `source .venv/bin/activate` |
+
+Com o ambiente ativo, `python` usa o executável do projeto. Instale as
+dependências com o mesmo comando em todos os sistemas:
+
+```text
+python -m pip install -r requirements-dev.txt
+```
+
+Repita a instalação se os arquivos de dependências mudarem. Ao abrir
+outro terminal, ative o ambiente novamente. Se preferir usar o executável
+diretamente, ou se o PowerShell bloquear a ativação, substitua `python`
+nos comandos de instalação, testes e lint por `./.venv/Scripts/python.exe`
+no Windows ou `./.venv/bin/python` no Linux/macOS; assim não é necessário
+ativar, conforme a [documentação do Python sobre ambientes virtuais](https://docs.python.org/3.11/library/venv.html#how-venvs-work).
+
+Para o uso diário, os comandos são os mesmos em todos os sistemas, com
+o ambiente ativo. Primeiro prepare os serviços, depois rode os testes e o lint:
+
+```text
 docker compose up -d --build --wait
-./.venv/Scripts/python.exe -m pytest
-./.venv/Scripts/python.exe -m flake8 src tests
+python -m pytest
+python -m flake8 src tests
 ```
 
-Todos os comandos são executados um por vez. A suíte usa
-`http://127.0.0.1:3000` por padrão. Os testes de integração chamam a API
-por HTTP; os unitários verificam cálculos e infraestrutura. Alguns cenários
+O Pytest verifica o comportamento do projeto. O Flake8 verifica problemas
+de código e estilo em `src` e `tests`; não executa operações bancárias.
+Com o `.venv` ativo, `pytest` também executa a suíte, mas não inicia os
+serviços do Docker. Se eles já estiverem disponíveis e as imagens em dia,
+você pode repetir apenas `python -m pytest`.
+
+A suíte usa `http://127.0.0.1:3000` por padrão. Os testes de integração
+chamam a API por HTTP; os unitários verificam cálculos e infraestrutura. Alguns cenários
 limpam os dados pelo `DbUtils.rollback()`: use um banco de desenvolvimento
 ou teste, sem dados que precisem ser preservados.
 
 Para executar apenas um arquivo ou os testes unitários:
 
-```powershell
-./.venv/Scripts/python.exe -m pytest -v tests/integration/transactions/test_transfer.py
-./.venv/Scripts/python.exe -m pytest tests/unit
+```text
+python -m pytest -v tests/integration/transactions/test_transfer.py
+python -m pytest tests/unit
 ```
 
 Há provas de concorrência, idempotência e reconciliação em
@@ -123,8 +174,8 @@ de outras pessoas.
 
 Para consultar uma conta com as chaves e o token obtidos na abertura:
 
-```powershell
-curl.exe -i "http://127.0.0.1:3000/accounts/CHAVE_DA_CONTA" -H "INTERNAL-TOKEN: default_token" -H "ACCOUNT-TOKEN: TOKEN_DA_CONTA"
+```text
+curl -i "http://127.0.0.1:3000/accounts/CHAVE_DA_CONTA" -H "INTERNAL-TOKEN: default_token" -H "ACCOUNT-TOKEN: TOKEN_DA_CONTA"
 ```
 
 Substitua os dois marcadores pelos valores da sua conta. As requisições
@@ -166,18 +217,19 @@ Dentro do Compose, a API acessa o banco por `db:5432`.
 
 Para investigar falha de inicialização ou conexão:
 
-```powershell
+```text
 docker compose ps
 docker compose logs --tail 100 api
 docker compose logs --tail 100 db
 ```
 
-Se o Docker não responder, abra o Docker Desktop e aguarde a inicialização.
+Se o Docker não responder, confira se o Docker Engine está em execução.
+No Windows/macOS, abra o Docker Desktop e aguarde a inicialização.
 Uma porta ocupada exige liberar a porta ou configurar outra.
 Uma alteração em `database/database.sql` só é aplicada na criação do banco.
 Para recriar exclusivamente os dados descartáveis deste projeto:
 
-```powershell
+```text
 docker compose down -v
 docker compose up -d --build --wait
 ```
