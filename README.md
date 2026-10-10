@@ -201,8 +201,9 @@ ou estado incompatível e 422 para regra de negócio.
 O timeout de trava/comando do banco retorna 503 `QIT000503`; conexão com
 o banco indisponível retorna 503 `QIT000504`; falha do CDI retorna
 503 `QIT001031`. `QIT000500` representa erro inesperado.
-O catálogo e os erros específicos estão em [docs/rotas.md](docs/rotas.md#erro)
-e `src/errors/`.
+O catálogo completo, organizado por categoria e com as mensagens de cada
+código, está em [docs/erros.md](docs/erros.md). Os erros aplicáveis a cada
+requisição estão em [docs/rotas.md](docs/rotas.md#resumo).
 
 ## Configuração e diagnóstico
 
@@ -246,6 +247,7 @@ Cálculos puros ficam em `src/calculations/`; o SQL de criação,
 em `database/database.sql`.
 
 - [Rotas, campos, respostas e erros](docs/rotas.md).
+- [Catálogo completo de erros por categoria](docs/erros.md).
 - [Como o projeto é organizado](docs/como-o-projeto-e-organizado.md).
 - [Decisões de negócio e arquitetura](docs/decisoes.md).
 - [Plano de implementação](docs/plano/PLANO-00-indice.md).

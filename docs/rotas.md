@@ -34,6 +34,10 @@ O contrato da API: cada rota, quem pode chamar, o que entra, o que sai e os erro
 
 ## Erro
 
+O [catálogo completo de erros](erros.md) reúne os 40 códigos definidos pela
+API, agrupados por categoria, com status HTTP e mensagens. Este documento
+lista os erros comuns abaixo e os específicos junto de cada rota.
+
 Todo erro tem o mesmo corpo (API-01), com o `translation` em português:
 
 ```json
