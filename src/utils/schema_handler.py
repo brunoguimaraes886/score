@@ -107,6 +107,7 @@ class SchemaHandler:
                 schema = SchemaCache.get_schema(schema_file_name)
                 resolver = RefResolver(f"file://{SCHEMA_PATH}/", None)
 
+                validate_text_values(kwargs["payload"])
                 try:
                     validate(kwargs["payload"], schema, resolver=resolver)
                 except ValidationError as error:
@@ -156,6 +157,7 @@ class SchemaHandler:
                 resolver = RefResolver(f"file://{SCHEMA_PATH}/", None)
                 query_params = query_params_to_dict(request.query_params, schema)
 
+                validate_text_values(query_params)
                 try:
                     validate(query_params, schema, resolver=resolver)
                 except ValidationError as error:
@@ -166,6 +168,25 @@ class SchemaHandler:
             return wrapper_validate
 
         return decorator_validate
+
+
+def validate_text_values(value) -> None:
+    """Recusa NUL e Unicode inválido antes de qualquer chamada ao resource."""
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, dict):
+            pending.extend(current.keys())
+            pending.extend(current.values())
+        elif isinstance(current, list):
+            pending.extend(current)
+        elif isinstance(current, str):
+            if "\u0000" in current:
+                raise InvalidSchema("Text must not contain NUL characters.")
+            try:
+                current.encode("utf-8")
+            except UnicodeEncodeError:
+                raise InvalidSchema("Text must contain valid Unicode characters.") from None
 
 
 def query_params_to_dict(query_params, schema: dict) -> dict:

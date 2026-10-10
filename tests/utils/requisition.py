@@ -9,10 +9,9 @@ API_OFFLINE = (
     "Ela precisa estar de pé pros testes rodarem. Suba com:  docker compose up"
 )
 
-# R3, TST-08: os únicos 5xx que um teste pode receber da API, os dois de
-# dependência fora do ar ou lenta: o banco passou do timeout (PRD-08) e o
-# Banco Central não respondeu (COF-20).
-ACCEPTED_SERVER_ERROR_CODES = ("QIT000503", "QIT001031")
+# R3, TST-08: somente os 503 previstos para dependência lenta ou fora do ar:
+# timeout do banco, banco indisponível e falha do CDI.
+ACCEPTED_SERVER_ERROR_CODES = ("QIT000503", "QIT000504", "QIT001031")
 
 
 class ClientRequisition:
