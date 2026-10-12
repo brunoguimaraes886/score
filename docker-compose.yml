@@ -54,7 +54,7 @@ services:
       # compose, quem responde e o Mockserver, pelo nome "mockserver".
       # BCB_API_TIMEOUT em segundos: passou, a virada responde 503 (COF-20).
       BCB_API_URL: ${BCB_API_URL:-http://mockserver:1080}
-      BCB_API_TIMEOUT: ${BCB_API_TIMEOUT:-2}
+      BCB_API_TIMEOUT: ${BCB_API_TIMEOUT:-5}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).

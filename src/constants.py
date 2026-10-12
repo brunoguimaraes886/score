@@ -46,7 +46,7 @@ BCB_API_URL = os.environ.get("BCB_API_URL", "http://mockserver:1080")
 
 # PRD-03, COF-20: quantos segundos esperar pela taxa antes de desistir.
 # Passou, a virada responde 503 e o dia não avança.
-BCB_API_TIMEOUT = int(os.environ.get("BCB_API_TIMEOUT", "2"))
+BCB_API_TIMEOUT = int(os.environ.get("BCB_API_TIMEOUT", "5"))
 
 # Rotas públicas: não exigem o header INTERNAL-TOKEN. São as duas que
 # precisam responder pra quem ainda não tem token nenhum: a raiz, que

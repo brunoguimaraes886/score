@@ -4,7 +4,7 @@ from calculations import GRACE_DAYS, RANK_CDI_PERCENT, RANK_ORDER, daily_rate, l
 from connectors import BcbConnector
 from controllers.base_controller import BaseController
 from controllers.gamification_controller import GamificationController
-from errors import DayAlreadyClosed, FutureAccountingDate, InvalidAccountingDate
+from errors import CdiUnavailable, DayAlreadyClosed, FutureAccountingDate, InvalidAccountingDate
 from models import Account, AccountStatus, AccountType, EntryType, RankEvent, TransactionType
 from repositories import AccountRepository, BankClockRepository, CategoryRepository, EntryRepository, GamificationRepository, LotRepository, TransactionRepository
 
@@ -27,12 +27,17 @@ class DayClosingController(BaseController):
     def close_day(self, day_closing_data: dict) -> dict:
         accounting_date = day_closing_data["accounting_date"]
         closing_date = self._parse_accounting_date(accounting_date)
+        self._validate_closing_date(closing_date, self.bank_clock_repository.peek_accounting_date())
+        # Encerra a leitura para liberar a conexão durante a consulta externa.
+        self.session.rollback()
+        try:
+            cdi_rate = self.bcb_connector.get_cdi_rate(closing_date)
+        except CdiUnavailable:
+            # Uma virada concorrente pode ter fechado o dia durante a consulta.
+            self._validate_closing_date(closing_date, self.bank_clock_repository.lock().accounting_date)
+            raise
         bank_clock = self.bank_clock_repository.lock()
-        if closing_date < bank_clock.accounting_date:
-            raise DayAlreadyClosed(accounting_date)
-        if closing_date > bank_clock.accounting_date:
-            raise FutureAccountingDate(accounting_date, bank_clock.accounting_date.isoformat())
-        cdi_rate = self.bcb_connector.get_cdi_rate(closing_date)
+        self._validate_closing_date(closing_date, bank_clock.accounting_date)
         bank = self.account_repository.get_system_account(AccountType.BANK)
         for customer_account in self.account_repository.list_open_customer_accounts():
             account, piggy_bank = self._lock_account_and_piggy_bank(customer_account)
@@ -46,6 +51,12 @@ class DayClosingController(BaseController):
         self.logger.info("day_closing_ready_to_commit accounting_date=%s", closing_date)
         self.session.commit()
         return {"closed_date": closing_date.isoformat(), "accounting_date": new_date.isoformat()}
+
+    def _validate_closing_date(self, closing_date: date, current_date: date) -> None:
+        if closing_date < current_date:
+            raise DayAlreadyClosed(closing_date.isoformat())
+        if closing_date > current_date:
+            raise FutureAccountingDate(closing_date.isoformat(), current_date.isoformat())
 
     def _pay_yield(self, account: Account, piggy_bank: Account, bank: Account, cdi_rate: str, closing_date: date) -> None:
         rate = daily_rate(cdi_rate, RANK_CDI_PERCENT[account.yield_rank.enumerator])

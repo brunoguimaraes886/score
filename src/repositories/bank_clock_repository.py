@@ -24,6 +24,10 @@ class BankClockRepository:
         """
         return self.session.query(BankClock).with_for_update(read=True).one().accounting_date
 
+    def peek_accounting_date(self) -> date:
+        """Lê a data sem trava; a virada a confere novamente depois de lock."""
+        return self.session.query(BankClock.accounting_date).one()[0]
+
     def lock(self) -> BankClock:
         """A linha do relógio, travada com SELECT ... FOR UPDATE, com os valores relidos do banco."""
         return self.session.query(BankClock).with_for_update().populate_existing().one()
