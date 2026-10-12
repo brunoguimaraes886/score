@@ -117,6 +117,11 @@ chamam a API por HTTP; os unitários verificam cálculos e infraestrutura. Algun
 limpam os dados pelo `DbUtils.rollback()`: use um banco de desenvolvimento
 ou teste, sem dados que precisem ser preservados.
 
+Os cenários compartilham o banco e o Mockserver: execute uma suíte por vez.
+Não há limpeza automática ao final; o banco fica com dados de teste e o dia
+contábil pode ter avançado. Para uma demonstração a partir do estado inicial,
+recrie os serviços conforme [Configuração e diagnóstico](#configuração-e-diagnóstico).
+
 Para executar apenas um arquivo ou os testes unitários:
 
 ```text
@@ -142,6 +147,11 @@ para as próximas chamadas. No banco fica somente seu hash SHA-256.
 Token da conta ausente ou de outro dono retorna 404. Token interno ou
 administrativo incorreto retorna 403; falhas repetidas podem levar a 429.
 
+No padrão, dez falhas em 15 minutos acionam a barreira: tokens interno e
+administrativo contam por IP; o token da conta, por conta e IP. Consultar
+`GET /customers/{customer_key}` exige o token de uma conta não encerrada
+do cliente; antes de abrir a conta, a consulta retorna 404.
+
 Tokens devem viajar nos cabeçalhos. Os logs próprios registram método,
 caminho, status, duração e identificador, sem corpo, cabeçalhos ou query
 string. O access log do Uvicorn está desativado nas duas inicializações.
@@ -162,6 +172,7 @@ Use dados fictícios e os campos descritos nos schemas.
 | 5 | `GET /accounts/{account_key}/entries?limit=10&page=0` | Token do titular. Retorna 200 com `data`, `limit`, `page` e `is_last_page`. Consulte origem e destino; avance `page` até a última página. |
 
 Cada `request_control_key` é um UUID v4 novo para uma nova intenção.
+O schema exige sua representação com letras minúsculas.
 A mesma chave com o mesmo pedido repete a resposta original sem movimentar
 novamente. A mesma chave com outro pedido retorna 409 `QIT001014`.
 Pedidos recusados não consomem a chave.
@@ -171,6 +182,37 @@ têm schemas fechados: campos extras, JSON inválido, NUL e Unicode inválido
 retornam 400 `QIT000001`. Acentos, apóstrofos e emojis válidos são aceitos.
 O extrato começa na página 0, aceita `limit` de 1 a 100 e mascara documentos
 de outras pessoas.
+
+**Cenário de referência.** Em um banco recém-criado, cadastre os dois clientes
+com os corpos abaixo, em pedidos separados a `POST /customers`:
+
+```json
+{"name":"Origem Teste","document_number":"213.091.166-87","email":"origem.teste@example.com","birthdate":"1990-05-17"}
+```
+
+```json
+{"name":"Destino Teste","document_number":"775.445.389-40","email":"destino.teste@example.com","birthdate":"1985-03-10"}
+```
+
+Abra uma conta para cada cliente pela etapa 2. Deposite `100000` na origem
+com `POST /accounts/{account_key}/deposits`:
+
+```json
+{"depositor_name":"Empresa Teste","depositor_document":"96.076.965/0001-37","amount":100000,"request_control_key":"11111111-1111-4111-8111-111111111111"}
+```
+
+Transfira `20000` com `POST /accounts/{account_key}/transfers`, usando a key
+e o token da origem na requisição. Substitua `CHAVE_DA_CONTA_DESTINO` pela
+key retornada na abertura da outra conta:
+
+```json
+{"destination_account_key":"CHAVE_DA_CONTA_DESTINO","amount":20000,"request_control_key":"22222222-2222-4222-8222-222222222222"}
+```
+
+Sem pontos aplicados, a tarifa é `200`: saldo final de `79800` na origem e
+`20000` no destino. O extrato da origem contém o depósito de `100000` e,
+com a mesma `transaction_key`, a transferência de `-20000` e a tarifa de
+`-200`. Repita o depósito com a mesma chave para conferir a idempotência.
 
 Para consultar uma conta com as chaves e o token obtidos na abertura:
 
@@ -190,6 +232,17 @@ Outras rotas permitem saques, consulta de operações, aplicação e liberação
 de pontos, categorias, guardar e resgatar. As rotas administrativas bloqueiam,
 desbloqueiam e fecham o dia contábil. Consulte os contratos e regras de cada
 uma em [docs/rotas.md](docs/rotas.md).
+
+Para avaliar rendimento e limites, considere duas particularidades:
+
+- O dia contábil começa em `2026-06-01` e só avança por
+  `POST /internal/day_closings`. Use o `yield_accounting_date` da consulta
+  da conta como data do fechamento; `created_at` segue o relógio real do
+  banco. O cofrinho rende na virada, quando há taxa de CDI para o dia.
+- Ultrapassar `DAILY_TRANSFER_LIMIT` (padrão: dez transferências enviadas
+  por dia contábil) retorna 422 `QIT001019` e persiste o bloqueio automático
+  da conta, sem realizar a transferência. O desbloqueio por
+  `POST /internal/accounts/{account_key}/unblocks` reinicia a contagem.
 
 ## Erros
 

@@ -36,6 +36,8 @@ AUTH_FAILURE_WINDOW_MINUTES = int(os.environ.get("AUTH_FAILURE_WINDOW_MINUTES", 
 # (lock_timeout) e por um comando (statement_timeout) antes de desistir.
 DB_LOCK_TIMEOUT_MS = int(os.environ.get("DB_LOCK_TIMEOUT_MS", "5000"))
 DB_STATEMENT_TIMEOUT_MS = int(os.environ.get("DB_STATEMENT_TIMEOUT_MS", "5000"))
+# Limite em segundos para estabelecer uma conexão com o banco.
+DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get("DB_CONNECT_TIMEOUT_SECONDS", "5"))
 
 # ARQ-07, COF-17: o Banco Central, de onde vem a taxa do CDI (série 12 do
 # SGS). Na entrega e nos testes, quem responde é o Mockserver do compose
