@@ -43,15 +43,18 @@ services:
       # mesmo IP, dentro de quantos minutos, antes do 429.
       AUTH_FAILURE_LIMIT: ${AUTH_FAILURE_LIMIT:-10}
       AUTH_FAILURE_WINDOW_MINUTES: ${AUTH_FAILURE_WINDOW_MINUTES:-15}
+      DAILY_TRANSFER_LIMIT: ${DAILY_TRANSFER_LIMIT:-10}
       # Timeout do banco (PRD-08), em milissegundos: esperando trava e
       # rodando um comando. Passou, a API responde 503.
       DB_LOCK_TIMEOUT_MS: ${DB_LOCK_TIMEOUT_MS:-5000}
       DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-5000}
+      # Limite em segundos para abrir uma conexão com o banco.
+      DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-5}
       # O Banco Central, de onde vem a taxa do CDI (ARQ-07). Dentro do
       # compose, quem responde e o Mockserver, pelo nome "mockserver".
       # BCB_API_TIMEOUT em segundos: passou, a virada responde 503 (COF-20).
       BCB_API_URL: ${BCB_API_URL:-http://mockserver:1080}
-      BCB_API_TIMEOUT: ${BCB_API_TIMEOUT:-5}
+      BCB_API_TIMEOUT: ${BCB_API_TIMEOUT:-2}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).
@@ -76,6 +79,8 @@ services:
 
   db:
     build: ./database/.
+    # Omite o SQL e o DETAIL dos erros, que podem conter dados sensíveis.
+    command: postgres -c log_min_error_statement=panic -c log_error_verbosity=terse
     environment:
       POSTGRES_USER: bootcamp
       POSTGRES_PASSWORD: bootcamp

@@ -98,7 +98,7 @@ from typing import Optional
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants import DATABASE_URL, DB_LOCK_TIMEOUT_MS, DB_STATEMENT_TIMEOUT_MS
+from constants import DATABASE_URL, DB_CONNECT_TIMEOUT_SECONDS, DB_LOCK_TIMEOUT_MS, DB_STATEMENT_TIMEOUT_MS
 
 
 # PRD-08: toda conexão nasce com lock_timeout e statement_timeout, em
@@ -112,7 +112,7 @@ engine = create_engine(
     pool_size=5,
     pool_recycle=600,
     pool_pre_ping=True,
-    connect_args={"options": DB_TIMEOUT_OPTIONS},
+    connect_args={"options": DB_TIMEOUT_OPTIONS, "connect_timeout": DB_CONNECT_TIMEOUT_SECONDS},
     hide_parameters=True,
 )
 
